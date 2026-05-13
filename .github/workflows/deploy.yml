@@ -23,24 +23,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
 
-      - name: Show package.json
-        run: cat package.json
+      - name: Install dependencies
+        run: npm install
 
-      - name: Install dependencies (with mirror)
-        run: |
-          echo "registry=https://registry.npmmirror.com" > .npmrc
-          npm install
-
-      - name: Build
+      - name: Build Next.js
         run: npm run build
 
-      - name: Show out dir
-        run: ls -la out/ || echo out dir not found
-
-      - name: Show .next dir
-        run: ls -la .next/ || echo .next dir not found
+      - name: Verify output
+        run: |
+          echo "=== .next directory ===" && ls -la .next/ || echo "no .next"
+          echo "=== out directory ===" && ls -la out/ || echo "no out"
 
       - name: Upload artifact
         if: success()
