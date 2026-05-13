@@ -19,16 +19,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      - name: Build with next export
+
+      - name: Build & Export
         run: |
-          echo "export const basePath = '/taskforge-frontend';" > next.config.js
-          npm run build && npm run export
+          npm run build
+          npx next export -o out || true
+          # Next.js 14+ 使用 output: 'export' 时 build 已生成 out 目录
+          ls -la out/ || echo "out dir not found, trying npm run export"
+          npm run export || echo "export script not found, checking out dir"
+          ls -la out/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
