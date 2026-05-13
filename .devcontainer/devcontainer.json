@@ -1,0 +1,12 @@
+{
+  "name": "TaskForge Frontend",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [3000],
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm run dev",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["package.json"]
+    }
+  }
+}
