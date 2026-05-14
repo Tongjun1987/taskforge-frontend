@@ -671,3 +671,7 @@
   console.log("11. http://localhost:3000/knowledge-base        → 知识库（交通法规+处理手册）");
   console.log("12. http://localhost:3000/agent-management       → 智能体（交通事故分析助手）");
 })();
+
+// dummy export to make this file a TypeScript module
+export {};
+

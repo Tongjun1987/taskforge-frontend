@@ -7,7 +7,7 @@ import {
   ArrowLeft, Image, FileText, Video, Music, Box, Sparkles, Brain,
   ChevronRight, Save, HardDrive, Link as LinkIcon, Cpu, BookOpen,
   GitBranch, History, RotateCcw, Download, Share2, Users, Lock,
-  Tag, Filter, BarChart3, Compare, RefreshCw, Shield, Hash,
+  Tag, Filter, BarChart3, GitCompare, RefreshCw, Shield, Hash,
   ChevronDown, FolderTree, FileCheck, ArrowUpDown, AlertTriangle,
   GitMerge, EyeOff, UserCheck, KeyRound, Target, ChevronLeft, ChevronRight as ChevronRightPage,
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
@@ -898,7 +898,7 @@ function DetailModal({ ds, onClose, onRollback }: { ds: Dataset; onClose: () => 
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", margin: 0 }}>版本历史</h4>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: "pointer", color: "#334155" }}>
-                    <Compare size={13} />版本对比
+                    <GitCompare size={13} />版本对比
                   </button>
                   <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: "pointer", color: "#334155" }}>
                     <Download size={13} />导出

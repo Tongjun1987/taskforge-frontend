@@ -5,7 +5,7 @@ import {
   Plus, Search, Database, Pencil, Trash2, Eye, Upload, X, CheckCircle2,
   AlertCircle, Clock, FileUp, Cloud, Globe, Server, Layers,
   GitBranch, History, RotateCcw, Download, Share2, Users, Lock,
-  Tag, Filter, BarChart3, Compare, RefreshCw, Shield,
+  Tag, Filter, BarChart3, GitCompare, RefreshCw, Shield,
   ChevronDown, FolderTree, FileCheck, ArrowUpDown, AlertTriangle,
   GitMerge, EyeOff, UserCheck, KeyRound, Target, ChevronLeft, ChevronRight as ChevronRightPage,
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
@@ -15,7 +15,7 @@ import {
   Link2, Merge, Gauge, ClipboardList, Settings, ArrowRight, Copy,
   TrashIcon, PauseCircle, PlayCircle, FileText, XCircle, AlertOctagon,
   ArrowLeft, FileCode, DatabaseBackup, Sparkles, TestTube, Eye as EyeIcon,
-  ArrowDown, Check, AlertBadge, Info, Sliders, Scissors, GitCombine,
+  ArrowDown, Check, AlertCircle, Info, Sliders, Scissors, GitMerge,
   FileWarning, Save, ChevronUp, ChevronFirst, ChevronLast
 } from "lucide-react";
 
@@ -406,7 +406,7 @@ function Step2Transform({ data, onChange }: { data: any; onChange: (key: string,
             alignItems: "center",
             justifyContent: "center",
           }}>
-            <GitCombine size={16} color="#10b981" />
+            <GitMerge size={16} color="#10b981" />
           </div>
           <h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>字段映射</h4>
         </div>
@@ -834,7 +834,7 @@ function Step3Quality({ data, onChange }: { data: any; onChange: (key: string, v
             alignItems: "center",
             justifyContent: "center",
           }}>
-            <AlertBadge size={16} color="white" />
+            <AlertCircle size={16} color="white" />
           </div>
           <h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>质量阈值与告警</h4>
         </div>
