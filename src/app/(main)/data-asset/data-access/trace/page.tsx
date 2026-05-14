@@ -15,7 +15,7 @@ import {
   Link2, Merge, Gauge, ClipboardList, Settings, ArrowRight, Copy,
   TrashIcon, PauseCircle, PlayCircle, FileText, XCircle, AlertOctagon,
   ArrowLeft, FileCode, DatabaseBackup, Sparkles, TestTube, Eye as EyeIcon,
-  ArrowDown, Check, AlertCircle, Info, Sliders, Scissors, GitMerge,
+  ArrowDown, Check, Info, Sliders, Scissors,
   FileWarning, Save, ChevronUp, ChevronFirst, ChevronLast, FileSearch as FileSearchIcon,
   MapPin, Clock3, User as UserIcon, Hash, ArrowUpRight, ArrowDownRight,
   CircleDot, GitCommitHorizontal, MoreHorizontal, Package, Cpu, Layers as LayersIcon,
