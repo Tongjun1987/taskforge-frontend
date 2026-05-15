@@ -652,7 +652,7 @@ function Step3CollectionStorage({ data, onChange }: { data: CollectionConfig & S
               <SelectField
                 label="采集范围"
                 value={data.batch_scope || "full"}
-                onChange={v => onChange({ batch_scope: v })}
+                onChange={v => onChange({ batch_scope: v as "full" | "incremental" })}
                 options={[{ value: "full", label: "全量采集" }, { value: "incremental", label: "增量采集" }]}
               />
               {data.batch_scope === "incremental" && (
