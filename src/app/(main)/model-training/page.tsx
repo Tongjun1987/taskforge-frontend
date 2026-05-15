@@ -21,7 +21,7 @@ interface TrainingTask {
   precision: string;
   optimizer: string;
   status: "running" | "completed" | "failed" | "queued" | "paused";
-  progress: number;
+  progress?: number;
   gpu_count: number;
   started_at: string;
   finished_at?: string;
