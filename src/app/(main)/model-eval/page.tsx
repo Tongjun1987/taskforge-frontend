@@ -4,7 +4,7 @@ import {
   Gauge, Plus, Search, Settings, Play, Pause, Trash2, Eye, Download,
   ChevronRight, ChevronDown, CheckCircle2, XCircle, Clock, RefreshCw,
   FileText, Database, Cpu, BarChart3, LineChart, Activity, ArrowRight,
-  Tag, Layers, ArrowForward, Beaker
+  Tag, Layers, Beaker
 } from "lucide-react";
 import toast from "react-hot-toast";
 
