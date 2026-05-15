@@ -5,7 +5,7 @@ import {
   Plus, Search, Database, Pencil, Trash2, Eye, Upload, X, CheckCircle2,
   AlertCircle, Clock, FileUp, Cloud, Globe, Server, Layers,
   GitBranch, History, RotateCcw, Download, Share2, Users, Lock,
-  Tag, Filter, BarChart3, Compare, RefreshCw, Shield,
+  Tag, Filter, BarChart3, GitCompare, RefreshCw, Shield,
   ChevronDown, FolderTree, FileCheck, ArrowUpDown, AlertTriangle,
   GitMerge, EyeOff, UserCheck, KeyRound, Target, ChevronLeft, ChevronRight as ChevronRightPage,
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
