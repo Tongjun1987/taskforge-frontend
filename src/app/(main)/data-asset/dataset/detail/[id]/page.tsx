@@ -19,6 +19,25 @@ interface DatasetVersion {
   change_log?: string;
 }
 
+interface DatasetChangelog {
+  id: string;
+  action: string;
+  user: string;
+  time: string;
+  detail: string;
+  version_from?: string;
+  version_to?: string;
+}
+
+interface DatasetBranch {
+  name: string;
+  creator: string;
+  created_at: string;
+  item_count: number;
+  status: string;
+  description: string;
+}
+
 interface Dataset {
   id: string;
   name: string;
@@ -42,6 +61,8 @@ interface Dataset {
   publish_status?: "published" | "draft" | "archived";
   claimed_count?: number;
   download_count?: number;
+  changelog?: DatasetChangelog[];
+  branches?: DatasetBranch[];
 }
 
 const STORAGE_KEY = "taskforge_datasets_mgr";
