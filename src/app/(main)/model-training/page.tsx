@@ -250,7 +250,7 @@ function TrainingListTab({ onCreate }: { onCreate: () => void }) {
                 {task.logs && task.logs.length > 0 ? (
                   <>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>训练日志</div>
-                    <pre style={{ fontSize: 11, color: "#475569", fontFamily: "monospace", background: "#0f172a", color: "#e2e8f0", padding: 14, borderRadius: 6, maxHeight: 200, overflowY: "auto", margin: 0, lineHeight: 1.8 }}>
+                    <pre style={{ fontSize: 11, fontFamily: "monospace", background: "#0f172a", color: "#e2e8f0", padding: 14, borderRadius: 6, maxHeight: 200, overflowY: "auto", margin: 0, lineHeight: 1.8 }}>
                       {task.logs.map((l, i) => <div key={i}>{l}</div>)}
                     </pre>
                   </>

@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
   basePath: process.env.GITHUB_REPOSITORY ? '/taskforge-frontend' : '',
   images: {
     unoptimized: true,

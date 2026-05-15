@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard, Target, Database, Tag, Shield, BarChart3, Rocket,
   ChevronLeft, ChevronRight, LogOut, Settings, Bell,
@@ -11,7 +11,17 @@ import {
   Route, Download, Upload
 } from "lucide-react";
 
-const NAV_ITEMS = [
+type NavItem = {
+  key?: string;
+  href?: string;
+  icon: React.ComponentType<any>;
+  label: string;
+  single?: boolean;
+  badge?: string;
+  children?: NavItem[];
+};
+
+const NAV_ITEMS: NavItem[] = [
   {
     key: "dashboard",
     href: "/dashboard",
@@ -373,7 +383,7 @@ export function Sidebar() {
                           {(openGroups[child.key] ?? false) && (
                             <div style={{ paddingLeft: 20, paddingBottom: 2 }}>
                               {child.children.map((grandchild: any) => {
-                                const gIcon = grandchild.icon;
+                                const gIcon = grandchild.icon as any;
                                 const gActive = isActive(grandchild.href);
                                 return (
                                   <Link
@@ -406,7 +416,7 @@ export function Sidebar() {
                                       }
                                     }}
                                   >
-                                    {gIcon && <gIcon size={11} style={{ flexShrink: 0, opacity: 0.7 }} />}
+                                    {gIcon && React.createElement(gIcon, { size: 11, style: { flexShrink: 0, opacity: 0.7 } })}
                                     <span style={{ flex: 1 }}>{grandchild.label}</span>
                                     {grandchild.badge && (
                                       <span style={{

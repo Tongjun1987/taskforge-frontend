@@ -83,6 +83,8 @@ interface Task {
   annotationSpec?: AnnotationSpec;
   evaluationMetrics?: EvaluationMetric[];
   modelRequirements?: ModelRequirement[];
+  dataRequirements?: DataRequirement[];
+  has_smart_annotation?: boolean;
 }
 
 interface EvaluationMetric {
@@ -99,6 +101,13 @@ interface ModelRequirement {
   category: string;
   name: string;
   value: string;
+  required: boolean;
+}
+
+interface DataRequirement {
+  id: string;
+  field: string;
+  type: string;
   required: boolean;
 }
 

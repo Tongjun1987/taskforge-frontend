@@ -114,7 +114,7 @@ export default function PromptManagementPage() {
     if (!newTemplate.name || !newTemplate.system_prompt) { toast.error("请填写名称和系统提示词"); return; }
     const tmpl: PromptTemplate = {
       id: "p" + Date.now(), ...newTemplate, tags: newTemplate.tags.split(",").map(t => t.trim()).filter(Boolean),
-      variables: [...newTemplate.system_prompt.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]),
+      variables: Array.from(newTemplate.system_prompt.matchAll(/\{\{(\w+)\}\}/g)).map(m => m[1]),
       version: "1.0.0", updated_at: new Date().toLocaleDateString("zh-CN"), is_builtin: false, usage_count: 0,
     };
     setTemplates(prev => [tmpl, ...prev]);
@@ -241,7 +241,7 @@ export default function PromptManagementPage() {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>
-                系统提示词 * <span style={{ fontWeight: 400, color: "#94a3b8" }}>（使用 {{变量名}} 定义占位符）</span>
+                系统提示词 * <span style={{ fontWeight: 400, color: "#94a3b8" }}>（使用 {"{{变量名}}"} 定义占位符）</span>
               </label>
               <textarea value={newTemplate.system_prompt} onChange={e => setNewTemplate(p => ({ ...p, system_prompt: e.target.value }))} placeholder="定义AI的角色、行为规则和约束..."
                 rows={6} style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }} />
