@@ -35,6 +35,7 @@ interface Dataset {
   collaborators?: string[];
   permission?: "private" | "team" | "public";
   md5_dedup?: boolean;
+  traceability?: string;
   import_format?: string[];
   split_ratio?: { train: number; val: number; test: number };
   eval_score?: number;
