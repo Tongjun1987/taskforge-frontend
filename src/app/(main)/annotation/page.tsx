@@ -19,6 +19,7 @@ interface AnnotationJob {
   dataset_id: string;
   dataset_name: string;
   annotators: string[];
+  annotator_team?: string;
   total_items: number;
   completed_items: number;
   kappa_score?: number;
