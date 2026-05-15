@@ -4,7 +4,8 @@ import {
   Database, Upload, Cloud, Server, GitBranch, 
   CheckCircle2, XCircle, Clock, Search, Filter,
   Plus, MoreHorizontal, RefreshCw, ArrowUpDown,
-  FileText, Image, Video, Box, FileJson, Layers
+  FileText, Image, Video, Box, FileJson, Layers,
+  Globe
 } from "lucide-react";
 import Link from "next/link";
 
@@ -35,7 +36,7 @@ const DATA_TYPE_CONFIG: Record<DataType, { label: string; icon: any; color: stri
 const SOURCE_TYPE_CONFIG: Record<SourceType, { label: string; icon: any }> = {
   "local": { label: "本地上传", icon: Upload },
   "oss": { label: "对象存储", icon: Cloud },
-  "api": { label: "API接入", icon: API },
+  "api": { label: "API接入", icon: Globe },
   "stream": { label: "流式采集", icon: GitBranch },
 };
 
