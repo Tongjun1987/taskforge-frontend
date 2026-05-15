@@ -29,6 +29,7 @@ interface FlowNode {
   label: string;
   icon: React.ReactNode;
   color: string;
+  bg?: string;
   x: number;
   y: number;
 }
