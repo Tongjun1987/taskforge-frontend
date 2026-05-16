@@ -1,6 +1,14 @@
 import { Suspense } from "react";
 import TaskDetailClient from "./TaskDetailClient";
-export async function generateStaticParams() { return []; }
+
+export async function generateStaticParams() {
+  return [
+    { id: 'scene-1' },
+    { id: 'scene-2' },
+    { id: 'scene-3' },
+  ];
+}
+
 export default function TaskDetailPage() {
   return (
     <Suspense fallback={
