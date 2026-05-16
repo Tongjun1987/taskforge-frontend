@@ -5,6 +5,24 @@ import { useRouter } from "next/navigation";
 import { login } from "@/lib/services";
 import toast from "react-hot-toast";
 
+// 预定义合法账号
+const VALID_ACCOUNTS = [
+  { username: "admin", password: "Admin@123456", full_name: "管理员", role: "admin" },
+];
+
+// 检测后端是否可用（尝试 ping 健康检查端点）
+async function checkBackendAvailable(): Promise<boolean> {
+  try {
+    const base = typeof window !== "undefined"
+      ? (process.env.NEXT_PUBLIC_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`)
+      : "http://localhost:8000";
+    const res = await fetch(`${base}/api/v1/health`, { method: "GET", signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("admin");
@@ -12,20 +30,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    // 启动时检测后端可用性
+    checkBackendAvailable().then(setBackendAvailable);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) { toast.error("请输入用户名和密码"); return; }
     setLoading(true);
     try {
-      const res = await login(username, password);
-      const { access_token, ...user } = res.data;
-      localStorage.setItem("access_token", access_token);
-      localStorage.setItem("user", JSON.stringify(user));
-      toast.success(`欢迎回来，${user.full_name || user.username}！`);
-      router.push("/task-modeling");
+      // 后端可用 → 走真实 API
+      if (backendAvailable) {
+        const res = await login(username, password);
+        const { access_token, ...user } = res.data;
+        localStorage.setItem("access_token", access_token);
+        localStorage.setItem("user", JSON.stringify(user));
+        toast.success(`欢迎回来，${user.full_name || user.username}！`);
+        router.push("/task-modeling");
+      } else {
+        // 后端不可用（GitHub Pages / 本地无后端）→ 前端模拟登录
+        const account = VALID_ACCOUNTS.find(a => a.username === username && a.password === password);
+        if (!account) {
+          toast.error("用户名或密码错误");
+          setLoading(false);
+          return;
+        }
+        const mockToken = "mock_token_" + Date.now();
+        localStorage.setItem("access_token", mockToken);
+        localStorage.setItem("user", JSON.stringify({
+          id: "1",
+          username: account.username,
+          full_name: account.full_name,
+          role: account.role,
+        }));
+        toast.success(`欢迎回来，${account.full_name}！（离线演示模式）`);
+        router.push("/task-modeling");
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "登录失败，请检查用户名和密码");
     } finally {
