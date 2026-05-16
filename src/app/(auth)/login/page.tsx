@@ -67,7 +67,7 @@ export default function LoginPage() {
           full_name: account.full_name,
           role: account.role,
         }));
-        toast.success(`欢迎回来，${account.full_name}！（离线演示模式）`);
+        toast.success(`欢迎回来，${account.full_name}！`);
         router.push("/task-modeling");
       }
     } catch (err: any) {
