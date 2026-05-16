@@ -41,7 +41,7 @@ api.interceptors.response.use(
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
-        window.location.href = "/login";
+        window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/login";
       }
     }
     return Promise.reject(error);

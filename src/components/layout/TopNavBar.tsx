@@ -304,7 +304,7 @@ export function TopNavBar() {
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/login";
   };
 
   return (
@@ -332,7 +332,7 @@ export function TopNavBar() {
           minWidth: 200,
           flexShrink: 0,
         }}>
-          <Image src="/logo.png" alt="logo" width={30} height={30} style={{ borderRadius: 7, flexShrink: 0, objectFit: 'contain' }} />
+          <Image src={(process.env.NEXT_PUBLIC_BASE_PATH || '') + "/logo.png"} alt="logo" width={30} height={30} style={{ borderRadius: 7, flexShrink: 0, objectFit: 'contain' }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 13, color: "#1e293b", lineHeight: 1.2, letterSpacing: "-0.2px" }}>
               零数数智工厂

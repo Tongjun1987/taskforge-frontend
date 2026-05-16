@@ -151,7 +151,7 @@ export function Sidebar() {
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/login";
   };
 
   const isActive = (href?: string) => href && (pathname === href || pathname.startsWith(href + "/"));
@@ -188,7 +188,7 @@ export function Sidebar() {
         borderBottom: `1px solid ${sidebarBorder}`,
         flexShrink: 0,
       }}>
-        <Image src="/logo.png" alt="logo" width={32} height={32} style={{ borderRadius: 8, flexShrink: 0, objectFit: 'contain' }} />
+        <Image src={(process.env.NEXT_PUBLIC_BASE_PATH || '') + "/logo.png"} alt="logo" width={32} height={32} style={{ borderRadius: 8, flexShrink: 0, objectFit: 'contain' }} />
         {!collapsed && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2, letterSpacing: "-0.3px" }}>

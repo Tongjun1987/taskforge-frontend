@@ -96,7 +96,7 @@ export default function LoginPage() {
       }}>
         {/* Logo区 */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <Image src="/logo.png" alt="logo" width={64} height={64} style={{ borderRadius: 16, marginBottom: 16, boxShadow: "0 8px 32px rgba(37, 99, 235, 0.3)", objectFit: 'contain' }} />
+          <Image src={(process.env.NEXT_PUBLIC_BASE_PATH || '') + "/logo.png"} alt="logo" width={64} height={64} style={{ borderRadius: 16, marginBottom: 16, boxShadow: "0 8px 32px rgba(37, 99, 235, 0.3)", objectFit: 'contain' }} />
           <h1 style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: -0.5, marginBottom: 6 }}>TaskForge</h1>
           <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 0 }}>任务驱动的行业 AI 数据·模型一体化平台</p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}>
