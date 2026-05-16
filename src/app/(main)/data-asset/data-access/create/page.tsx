@@ -10,19 +10,16 @@ import {
   ChevronRight, ChevronLeft, Eye, EyeOff, Loader2, Play, Pause,
   FileCheck, Trash2, RefreshCw, ArrowRight, Info, AlertTriangle,
   Calendar, User, Lock, Users, Globe as GlobeIcon, Bell, Mail,
-  MessageSquare, Send, Copy, Check, Zap
+  MessageSquare, Send, Copy, Check, Zap, AlertCircle as AlertCircleIcon,
 } from "lucide-react";
 
 // ========== 类型定义 ==========
 interface BasicInfo {
   name: string;
   type: string;
-  task_name: string;
   project_name: string;
-  permission: string;
+  related_task: string;
   description: string;
-  tags: string[];
-  md5_dedup: boolean;
 }
 
 interface DataSourceConfig {
@@ -47,15 +44,25 @@ interface DataSourceConfig {
   kafka_topic?: string;
   kafka_group_id?: string;
   kafka_auth_type?: string;
-  // MySQL CDC
-  mysql_host?: string;
-  mysql_port?: string;
-  mysql_database?: string;
-  mysql_username?: string;
-  mysql_password?: string;
-  mysql_table?: string;
+  // 关系型数据库
+  rdb_host?: string;
+  rdb_port?: string;
+  rdb_database?: string;
+  rdb_username?: string;
+  rdb_password?: string;
+  rdb_table?: string;
+  // 非关系型数据库
+  nrd_type?: string;
+  nrd_host?: string;
+  nrd_port?: string;
+  nrd_database?: string;
+  nrd_username?: string;
+  nrd_password?: string;
+  nrd_collection?: string;
   // RTSP
   rtsp_url?: string;
+  // 公开数据
+  public_url?: string;
 }
 
 interface CollectionConfig {
@@ -114,17 +121,20 @@ const DATA_TYPES = [
   { value: "multimodal", label: "多模态", icon: Box, color: "#10b981" },
   { value: "conversation", label: "对话数据", icon: Brain, color: "#6366f1" },
   { value: "knowledge", label: "知识图谱", icon: Sparkles, color: "#14b8a6" },
+  { value: "embedding", label: "Embedding", icon: Cpu, color: "#8b5cf6" },
+  { value: "instruction", label: "指令数据", icon: BookOpen, color: "#f97316" },
   { value: "timeseries", label: "时序数据", icon: Activity, color: "#06b6d4" },
+  { value: "pointcloud", label: "点云数据", icon: Target, color: "#f43f5e" },
 ];
 
 const SOURCE_TYPES = [
   { value: "local", label: "本地文件", icon: FileUp, color: "#6366f6", desc: "从本地上传数据文件" },
-  { value: "oss", label: "对象存储(OSS/S3)", icon: HardDriveDownload, color: "#f59e0b", desc: "连接阿里云OSS或AWS S3" },
+  { value: "oss", label: "对象存储", icon: HardDriveDownload, color: "#f59e0b", desc: "连接阿里云OSS或AWS S3" },
   { value: "api", label: "API接口", icon: ServerIcon, color: "#3b82f6", desc: "通过HTTP REST API获取数据" },
   { value: "kafka", label: "Kafka消息队列", icon: Activity, color: "#14b8a6", desc: "消费Kafka Topic数据" },
-  { value: "mysql_cdc", label: "MySQL CDC", icon: DatabaseIcon, color: "#ec4899", desc: "MySQL数据库变更捕获" },
+  { value: "relational", label: "关系型数据库", icon: DatabaseIcon, color: "#3b82f6", desc: "MySQL / PostgreSQL / SQL Server 等" },
+  { value: "non_relational", label: "非关系型数据库", icon: DatabaseIcon, color: "#ec4899", desc: "MongoDB / Redis / Elasticsearch 等" },
   { value: "rtsp", label: "RTSP视频流", icon: Wifi, color: "#dc2626", desc: "实时视频流采集" },
-  { value: "platform", label: "平台数据", icon: Layers, color: "#8b5cf6", desc: "从平台其他模块获取数据" },
   { value: "public", label: "公开数据", icon: Globe, color: "#10b981", desc: "接入公开数据集" },
 ];
 
@@ -136,7 +146,10 @@ const FILE_FORMATS: Record<string, string[]> = {
   multimodal: ["JSONL", "Parquet"],
   conversation: ["JSONL", "CSV"],
   knowledge: ["JSON", "RDF", "OWL"],
+  embedding: ["JSONL", "Parquet", "CSV"],
+  instruction: ["JSONL", "CSV"],
   timeseries: ["CSV", "Parquet", "JSON"],
+  pointcloud: ["PLY", "LAS", "PCD", "OFF"],
 };
 
 const TASK_SUGGESTIONS = [
@@ -271,15 +284,39 @@ function SwitchField({ label, checked, onChange, description }: {
 }
 
 // ========== 步骤1：基础信息 ==========
-function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Partial<BasicInfo>) => void }) {
-  const [tagInput, setTagInput] = useState("");
+const PROJECT_OPTIONS = [
+  { value: "traffic", label: "交通事件识别" },
+  { value: "intention", label: "意图识别" },
+  { value: "sentiment", label: "情感分析" },
+  { value: "multimodal", label: "多模态理解" },
+  { value: "ocr", label: "OCR识别" },
+];
 
-  const addTag = () => {
-    if (tagInput.trim() && !data.tags.includes(tagInput.trim())) {
-      onChange({ tags: [...data.tags, tagInput.trim()] });
-      setTagInput("");
-    }
-  };
+const TASK_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  traffic: [
+    { value: "obj-detect", label: "交通目标检测" },
+    { value: "multi-track", label: "多目标跟踪" },
+    { value: "behavior", label: "交通行为识别" },
+    { value: "event", label: "交通事件识别" },
+    { value: "timeseries", label: "时序建模与异常分析" },
+  ],
+  intention: [
+    { value: "intent-v2", label: "意图识别 v2.1" },
+    { value: "intent-v1", label: "意图识别 v1.0" },
+  ],
+  sentiment: [
+    { value: "sentiment-v1", label: "情感分析 v1.0" },
+  ],
+  multimodal: [
+    { value: "mm-v1", label: "多模态理解 v1.0" },
+  ],
+  ocr: [
+    { value: "ocr-v1", label: "OCR识别 v1.0" },
+  ],
+};
+
+function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Partial<BasicInfo>) => void }) {
+  const taskOptions = TASK_OPTIONS[data.project_name] || [];
 
   return (
     <div style={{ padding: "24px 0" }}>
@@ -297,77 +334,25 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
             required
           />
 
-          <InputField label="关联任务" value={data.task_name} onChange={v => onChange({ task_name: v })} placeholder="请输入关联的AI任务名称，如：意图识别v2.1" />
-
-          <InputField label="所属项目" value={data.project_name} onChange={v => onChange({ project_name: v })} placeholder="请输入所属项目名称" />
-
-          {/* 权限选择 */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#475569", marginBottom: 8 }}>数据权限</label>
-            <div style={{ display: "flex", gap: 12 }}>
-              {[
-                { value: "private", label: "私有", desc: "仅创建者可见", icon: Lock },
-                { value: "team", label: "团队", desc: "团队成员可访问", icon: Users },
-                { value: "public", label: "公开", desc: "平台所有用户可读", icon: GlobeIcon },
-              ].map(opt => {
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => onChange({ permission: opt.value })}
-                    style={{
-                      flex: 1, padding: 14, borderRadius: 10, cursor: "pointer",
-                      border: `2px solid ${data.permission === opt.value ? "#3b82f6" : "#e2e8f0"}`,
-                      background: data.permission === opt.value ? "#eff6ff" : "#fff",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <Icon size={20} color={data.permission === opt.value ? "#3b82f6" : "#94a3b8"} style={{ marginBottom: 6 }} />
-                    <div style={{ fontSize: 13, fontWeight: 600, color: data.permission === opt.value ? "#3b82f6" : "#334155" }}>{opt.label}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{opt.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* MD5去重 */}
-          <SwitchField
-            label="启用MD5去重"
-            checked={data.md5_dedup}
-            onChange={v => onChange({ md5_dedup: v })}
-            description="自动检测并去除重复数据"
+          <SelectField
+            label="所属项目"
+            value={data.project_name}
+            onChange={v => onChange({ project_name: v, related_task: "" })}
+            options={PROJECT_OPTIONS}
+            placeholder="请选择所属项目"
+            required
           />
 
-          {/* 标签 */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#475569", marginBottom: 6 }}>数据标签</label>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addTag()}
-                placeholder="输入标签后按回车添加"
-                style={{ flex: 1, padding: "10px 12px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 13, outline: "none" }}
-              />
-              <button onClick={addTag} style={{ padding: "10px 16px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, cursor: "pointer" }}>添加</button>
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {data.tags.map(tag => (
-                <span key={tag} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 99, background: "#eff6ff", color: "#2563eb", fontSize: 12 }}>
-                  #{tag}
-                  <button onClick={() => onChange({ tags: data.tags.filter(t => t !== tag) })} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#2563eb" }}><X size={12} /></button>
-                </span>
-              ))}
-            </div>
-            <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {TASK_SUGGESTIONS.filter(s => !data.tags.includes(s)).slice(0, 5).map(s => (
-                <button key={s} onClick={() => onChange({ tags: [...data.tags, s] })} style={{ padding: "3px 10px", borderRadius: 99, border: "1px dashed #cbd5e1", background: "#fff", fontSize: 11, cursor: "pointer", color: "#64748b" }}>
-                  + {s}
-                </button>
-              ))}
-            </div>
-          </div>
+          {data.project_name && (
+            <SelectField
+              label="关联任务"
+              value={data.related_task}
+              onChange={v => onChange({ related_task: v })}
+              options={taskOptions}
+              placeholder="请选择关联的建模任务"
+              required
+            />
+          )}
         </div>
 
         {/* 右侧提示 */}
@@ -379,8 +364,8 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
           <ul style={{ fontSize: 12, color: "#64748b", lineHeight: 1.8, paddingLeft: 16, margin: 0 }}>
             <li>任务名称将作为数据接入任务的唯一标识</li>
             <li>数据类型决定支持的数据格式和采集方式</li>
-            <li>关联任务将帮助您更好地管理数据资产</li>
-            <li>私有数据仅您自己可见，团队数据可被团队成员访问</li>
+            <li>所属项目关联任务建模中的场景</li>
+            <li>关联任务用于将数据接入任务归属到具体建模任务</li>
           </ul>
         </div>
       </div>
@@ -389,9 +374,24 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
 }
 
 // ========== 步骤2：数据源与采集配置 ==========
+const API_AUTH_TYPES = [
+  { value: "none", label: "无认证" },
+  { value: "apikey", label: "API Key" },
+  { value: "oauth2", label: "OAuth2" },
+  { value: "basic", label: "Basic Auth" },
+];
+
+const NRD_TYPES = [
+  { value: "mongodb", label: "MongoDB" },
+  { value: "redis", label: "Redis" },
+  { value: "elasticsearch", label: "Elasticsearch" },
+  { value: "cassandra", label: "Cassandra" },
+];
+
 function Step2DataSource({ data, onChange }: { data: DataSourceConfig; onChange: (d: Partial<DataSourceConfig>) => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "failed" | null>(null);
+  const [apiAuthType, setApiAuthType] = useState("none");
 
   const handleTestConnection = () => {
     setTimeout(() => setTestResult(Math.random() > 0.2 ? "success" : "failed"), 1500);
@@ -485,12 +485,18 @@ function Step2DataSource({ data, onChange }: { data: DataSourceConfig; onChange:
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#475569", marginBottom: 8 }}>认证方式</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {["无认证", "API Key", "OAuth2", "Basic Auth"].map((auth, i) => (
-                    <button key={auth} style={{
-                      padding: "8px 16px", borderRadius: 6, border: `1px solid ${i === 0 ? "#3b82f6" : "#e2e8f0"}`,
-                      background: i === 0 ? "#eff6ff" : "#fff", fontSize: 12, cursor: "pointer",
-                      color: i === 0 ? "#3b82f6" : "#64748b",
-                    }}>{auth}</button>
+                  {API_AUTH_TYPES.map(auth => (
+                    <button
+                      key={auth.value}
+                      onClick={() => { setApiAuthType(auth.value); onChange({ api_auth_type: auth.value }); }}
+                      style={{
+                        padding: "8px 16px", borderRadius: 6,
+                        border: `1px solid ${apiAuthType === auth.value ? "#3b82f6" : "#e2e8f0"}`,
+                        background: apiAuthType === auth.value ? "#eff6ff" : "#fff",
+                        fontSize: 12, cursor: "pointer",
+                        color: apiAuthType === auth.value ? "#3b82f6" : "#64748b",
+                      }}
+                    >{auth.label}</button>
                   ))}
                 </div>
               </div>
@@ -511,29 +517,54 @@ function Step2DataSource({ data, onChange }: { data: DataSourceConfig; onChange:
                 <InputField label="消费组ID" value={data.kafka_group_id || ""} onChange={v => onChange({ kafka_group_id: v })} placeholder="请输入消费组ID" />
                 <SelectField
                   label="认证方式"
-                  value={data.kafka_auth_type || ""}
+                  value={data.kafka_auth_type || "none"}
                   onChange={v => onChange({ kafka_auth_type: v })}
                   options={[{ value: "none", label: "无认证" }, { value: "sasl", label: "SASL" }]}
-                  placeholder="选择认证方式"
                 />
               </div>
             </>
           )}
 
-          {data.source_type === "mysql_cdc" && (
+          {data.source_type === "relational" && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                <InputField label="主机地址" value={data.mysql_host || ""} onChange={v => onChange({ mysql_host: v })} placeholder="localhost" required />
-                <InputField label="端口" value={data.mysql_port || "3306"} onChange={v => onChange({ mysql_port: v })} placeholder="3306" />
-                <InputField label="数据库名" value={data.mysql_database || ""} onChange={v => onChange({ mysql_database: v })} placeholder="请输入数据库名" required />
-                <InputField label="用户名" value={data.mysql_username || ""} onChange={v => onChange({ mysql_username: v })} placeholder="请输入用户名" required />
+                <InputField label="主机地址" value={data.rdb_host || ""} onChange={v => onChange({ rdb_host: v })} placeholder="localhost" required />
+                <InputField label="端口" value={data.rdb_port || "3306"} onChange={v => onChange({ rdb_port: v })} placeholder="3306" />
+                <InputField label="数据库名" value={data.rdb_database || ""} onChange={v => onChange({ rdb_database: v })} placeholder="请输入数据库名" required />
+                <InputField label="用户名" value={data.rdb_username || ""} onChange={v => onChange({ rdb_username: v })} placeholder="请输入用户名" required />
                 <div style={{ position: "relative" }}>
-                  <InputField label="密码" value={data.mysql_password || ""} onChange={v => onChange({ mysql_password: v })} placeholder="请输入密码" type={showPassword ? "text" : "password"} required />
+                  <InputField label="密码" value={data.rdb_password || ""} onChange={v => onChange({ rdb_password: v })} placeholder="请输入密码" type={showPassword ? "text" : "password"} required />
                   <button onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: 32, background: "none", border: "none", cursor: "pointer" }}>
                     {showPassword ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
                   </button>
                 </div>
-                <InputField label="数据表名" value={data.mysql_table || ""} onChange={v => onChange({ mysql_table: v })} placeholder="table_name" required />
+                <InputField label="数据表名" value={data.rdb_table || ""} onChange={v => onChange({ rdb_table: v })} placeholder="table_name" required />
+              </div>
+            </>
+          )}
+
+          {data.source_type === "non_relational" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <SelectField
+                  label="数据库类型"
+                  value={data.nrd_type || ""}
+                  onChange={v => onChange({ nrd_type: v })}
+                  options={NRD_TYPES}
+                  placeholder="请选择非关系型数据库类型"
+                  required
+                />
+                <InputField label="主机地址" value={data.nrd_host || ""} onChange={v => onChange({ nrd_host: v })} placeholder="localhost" required />
+                <InputField label="端口" value={data.nrd_port || ""} onChange={v => onChange({ nrd_port: v })} placeholder="27017" />
+                <InputField label="数据库名" value={data.nrd_database || ""} onChange={v => onChange({ nrd_database: v })} placeholder="请输入数据库名" required />
+                <InputField label="用户名" value={data.nrd_username || ""} onChange={v => onChange({ nrd_username: v })} placeholder="请输入用户名（可选）" />
+                <div style={{ position: "relative" }}>
+                  <InputField label="密码" value={data.nrd_password || ""} onChange={v => onChange({ nrd_password: v })} placeholder="请输入密码（可选）" type={showPassword ? "text" : "password"} />
+                  <button onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: 32, background: "none", border: "none", cursor: "pointer" }}>
+                    {showPassword ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
+                  </button>
+                </div>
+                <InputField label="Collection/索引" value={data.nrd_collection || ""} onChange={v => onChange({ nrd_collection: v })} placeholder="collection_name / index_name" />
               </div>
             </>
           )}
@@ -550,32 +581,20 @@ function Step2DataSource({ data, onChange }: { data: DataSourceConfig; onChange:
             </>
           )}
 
-          {data.source_type === "platform" && (
-            <>
-              <SelectField
-                label="选择平台数据源"
-                value=""
-                onChange={() => {}}
-                options={[{ value: "ods", label: "ODS层原始数据" }, { value: "dw", label: "数据仓库" }]}
-                placeholder="请选择平台数据源"
-              />
-            </>
-          )}
-
           {data.source_type === "public" && (
             <>
-              <InputField label="数据源URL" value="" onChange={() => {}} placeholder="请输入公开数据源地址" required />
+              <InputField label="数据源URL" value={data.public_url || ""} onChange={v => onChange({ public_url: v })} placeholder="https://huggingface.co/datasets/... 或 Kaggle 数据集URL" required />
               <div style={{ padding: 12, background: "#ecfdf5", borderRadius: 8, border: "1px solid #10b981", display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <CheckCircle2 size={16} color="#10b981" style={{ marginTop: 2, flexShrink: 0 }} />
                 <div style={{ fontSize: 12, color: "#065f46" }}>
-                  支持接入HuggingFace、Kaggle等公开数据集。
+                  支持接入 HuggingFace、Kaggle 等公开数据集。请填写完整的数据集或文件下载链接。
                 </div>
               </div>
             </>
           )}
 
           {/* 测试连接按钮 */}
-          {(data.source_type !== "local" && data.source_type !== "platform" && data.source_type !== "public") && (
+          {["oss", "api", "kafka", "relational", "non_relational"].includes(data.source_type) && (
             <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12 }}>
               <button
                 onClick={handleTestConnection}
@@ -592,7 +611,7 @@ function Step2DataSource({ data, onChange }: { data: DataSourceConfig; onChange:
                 ) : testResult === "success" ? (
                   <><CheckCircle2 size={16} />连接成功</>
                 ) : (
-                  <><AlertCircle size={16} />连接失败</>
+                  <><AlertCircleIcon size={16} />连接失败</>
                 )}
               </button>
               {testResult === "success" && (
@@ -865,12 +884,10 @@ function Step4Confirm({ basicInfo, dataSource, collectionStorage }: {
             </h4>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
-                { label: "任务名称", value: basicInfo.name },
+                { label: "任务名称", value: basicInfo.name || "—" },
                 { label: "数据类型", value: getTypeLabel() },
-                { label: "关联任务", value: basicInfo.task_name || "—" },
-                { label: "所属项目", value: basicInfo.project_name || "—" },
-                { label: "数据权限", value: basicInfo.permission === "private" ? "私有" : basicInfo.permission === "team" ? "团队" : "公开" },
-                { label: "MD5去重", value: basicInfo.md5_dedup ? "已启用" : "未启用" },
+                { label: "所属项目", value: PROJECT_OPTIONS.find(p => p.value === basicInfo.project_name)?.label || "—" },
+                { label: "关联任务", value: basicInfo.related_task ? TASK_OPTIONS[basicInfo.project_name]?.find(t => t.value === basicInfo.related_task)?.label || "—" : "—" },
               ].map(item => (
                 <div key={item.label} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>{item.label}</div>
@@ -878,13 +895,6 @@ function Step4Confirm({ basicInfo, dataSource, collectionStorage }: {
                 </div>
               ))}
             </div>
-            {basicInfo.tags.length > 0 && (
-              <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {basicInfo.tags.map(tag => (
-                  <span key={tag} style={{ padding: "2px 8px", borderRadius: 4, background: "#eff6ff", color: "#2563eb", fontSize: 11 }}>#{tag}</span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* 数据源配置确认 */}
@@ -950,11 +960,9 @@ function Step4Confirm({ basicInfo, dataSource, collectionStorage }: {
                   id: `task-${Date.now()}`,
                   name: basicInfo.name,
                   type: basicInfo.type,
-                  task_name: basicInfo.task_name,
+                  task_name: PROJECT_OPTIONS.find(p => p.value === basicInfo.project_name)?.label || "",
                   project_name: basicInfo.project_name,
-                  permission: basicInfo.permission,
-                  tags: basicInfo.tags,
-                  md5_dedup: basicInfo.md5_dedup,
+                  related_task: basicInfo.related_task,
                   source_type: dataSource.source_type,
                   collection_mode: collectionStorage.collection_mode,
                   access_status: "pending",
@@ -994,12 +1002,9 @@ export default function CreateDataAccessPage() {
   const [basicInfo, setBasicInfo] = useState<BasicInfo>({
     name: "",
     type: "",
-    task_name: "",
     project_name: "",
-    permission: "team",
+    related_task: "",
     description: "",
-    tags: [],
-    md5_dedup: true,
   });
 
   const [dataSource, setDataSource] = useState<DataSourceConfig>({
@@ -1018,7 +1023,7 @@ export default function CreateDataAccessPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return basicInfo.name.trim() && basicInfo.type;
+        return basicInfo.name.trim() && basicInfo.type && basicInfo.project_name && basicInfo.related_task;
       case 1:
         return dataSource.source_type !== "";
       case 2:

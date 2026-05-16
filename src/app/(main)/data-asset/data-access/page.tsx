@@ -11,7 +11,7 @@ import {
   ChevronDown, FolderTree, FileCheck, ArrowUpDown, AlertTriangle,
   GitMerge, EyeOff, UserCheck, KeyRound, Target, ChevronLeft, ChevronRight as ChevronRightPage,
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
-  Activity, Loader2
+  Activity, Loader2, Play
 } from "lucide-react";
 
 interface DatasetVersion {
@@ -68,7 +68,7 @@ interface Dataset {
   branches?: CollaborationBranch[];
   // 数据接入专用字段
   access_protocol?: string;        // 接入协议: RTSP/API/HTTP/本地/OSS/Kafka/MySQL CDC
-  access_status?: "accessing" | "completed" | "failed" | "pending";  // 接入状态
+  access_status?: "running" | "completed" | "stopped" | "failed" | "pending";  // 接入状态
   access_progress?: number;         // 接入进度 0-100
   access_rate?: number;             // 接入成功率
   source_url?: string;              // 接入源地址
@@ -91,15 +91,13 @@ const DATA_TYPES = [
 
 const SOURCE_TYPES = [
   { value: "local", label: "本地文件", icon: FileUp, color: "#6366f1" },
-  { value: "server", label: "文件服务器", icon: Server, color: "#8b5cf6" },
-  { value: "cloud", label: "云平台", icon: Cloud, color: "#3b82f6" },
-  { value: "platform", label: "平台数据", icon: Layers, color: "#10b981" },
-  { value: "public", label: "公开数据", icon: Globe, color: "#f59e0b" },
-  { value: "rtsp", label: "RTSP流", icon: Wifi, color: "#ec4899" },
-  { value: "api", label: "API/HTTP", icon: ServerIcon, color: "#f59e0b" },
-  { value: "kafka", label: "Kafka流", icon: Activity, color: "#14b8a6" },
-  { value: "mysql_cdc", label: "MySQL CDC", icon: DatabaseIcon, color: "#3b82f6" },
-  { value: "oss", label: "OSS对象存储", icon: CloudDownload, color: "#8b5cf6" },
+  { value: "oss", label: "对象存储", icon: CloudDownload, color: "#8b5cf6" },
+  { value: "api", label: "API接口", icon: ServerIcon, color: "#f59e0b" },
+  { value: "kafka", label: "Kafka消息队列", icon: Activity, color: "#14b8a6" },
+  { value: "relational", label: "关系型数据库", icon: DatabaseIcon, color: "#3b82f6" },
+  { value: "non_relational", label: "非关系型数据库", icon: DatabaseIcon, color: "#ec4899" },
+  { value: "rtsp", label: "RTSP视频流", icon: Wifi, color: "#dc2626" },
+  { value: "public", label: "公开数据", icon: Globe, color: "#10b981" },
 ];
 
 // 接入协议字典
@@ -114,10 +112,11 @@ const ACCESS_PROTOCOLS: Record<string, { label: string; icon: any; color: string
 
 // 接入状态字典
 const ACCESS_STATUS: Record<string, { label: string; bg: string; color: string; icon: any }> = {
-  accessing: { label: "接入中", bg: "#dbeafe", color: "#1d4ed8", icon: Loader2 },
+  running: { label: "运行中", bg: "#dbeafe", color: "#1d4ed8", icon: Loader2 },
   completed: { label: "已完成", bg: "#dcfce7", color: "#15803d", icon: CheckCircle2 },
-  failed: { label: "失败", bg: "#fee2e2", color: "#dc2626", icon: AlertCircle },
-  pending: { label: "待接入", bg: "#fef9c3", color: "#ca8a04", icon: Clock },
+  stopped: { label: "已终止", bg: "#f1f5f9", color: "#64748b", icon: Pause },
+  failed: { label: "执行失败", bg: "#fee2e2", color: "#dc2626", icon: AlertCircle },
+  pending: { label: "待执行", bg: "#fef9c3", color: "#ca8a04", icon: Clock },
 };
 
 const STORAGE_KEY = "taskforge_datasets_access";
@@ -434,7 +433,7 @@ const MOCK_DATASETS: Dataset[] = [
     source_name: "G15沈海高速监控中心",
     source_url: "rtsp://10.0.1.100:554/stream/g15-full",
     access_protocol: "RTSP",
-    access_status: "accessing",
+    access_status: "running",
     access_progress: 65,
     access_rate: 97.3,
     real_time_stream: true,
@@ -467,7 +466,7 @@ const MOCK_DATASETS: Dataset[] = [
     source_name: "城市交通卡口系统",
     source_url: "https://api.traffic.gov.cn/v1/capture/stream",
     access_protocol: "API/HTTP",
-    access_status: "accessing",
+    access_status: "running",
     access_progress: 42,
     access_rate: 99.1,
     real_time_stream: true,
@@ -534,7 +533,7 @@ const MOCK_DATASETS: Dataset[] = [
     source_name: "高德交通数据Kafka集群",
     source_url: "kafka://amap-traffic:9092/gps-trace-topic",
     access_protocol: "Kafka",
-    access_status: "accessing",
+    access_status: "running",
     access_progress: 78,
     access_rate: 98.8,
     real_time_stream: true,
@@ -691,7 +690,7 @@ function Md5Badge({ active }: { active: boolean }) {
 function AccessStatusBadge({ status, progress }: { status: string; progress?: number }) {
   const info = ACCESS_STATUS[status] || ACCESS_STATUS.pending;
   const Icon = info.icon;
-  const isAccessing = status === "accessing";
+  const isRunning = status === "running";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
@@ -706,10 +705,10 @@ function AccessStatusBadge({ status, progress }: { status: string; progress?: nu
         fontSize: 11,
         fontWeight: 600,
       }}>
-        {isAccessing ? <Icon size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Icon size={11} />}
+        {isRunning ? <Icon size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Icon size={11} />}
         {info.label}
       </span>
-      {isAccessing && progress !== undefined && (
+      {isRunning && progress !== undefined && (
         <div style={{ width: 60, height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
           <div style={{
             width: `${progress}%`,
@@ -1073,7 +1072,6 @@ function DatasetPageContent() {
   const [data, setData] = useState<Dataset[]>(MOCK_DATASETS);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const [permFilter, setPermFilter] = useState("");
   const [accessFilter, setAccessFilter] = useState(""); // 接入状态筛选
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -1090,11 +1088,10 @@ function DatasetPageContent() {
 
   // 筛选
   const filtered = sortedData.filter(d => {
-    const matchSearch = !search || d.name.includes(search) || d.task_name.includes(search) || (d.tags || []).some(t => t.includes(search));
+    const matchSearch = !search || d.task_name.includes(search) || d.name.includes(search);
     const matchType = !typeFilter || d.type === typeFilter;
-    const matchPerm = !permFilter || d.permission === permFilter;
     const matchAccess = !accessFilter || d.access_status === accessFilter;
-    return matchSearch && matchType && matchPerm && matchAccess;
+    return matchSearch && matchType && matchAccess;
   });
 
   // 分页
@@ -1109,8 +1106,10 @@ function DatasetPageContent() {
 
   // 统计
   const totalCount = filtered.length;
-  const accessingCount = filtered.filter(d => d.access_status === "accessing").length;
+  const runningCount = filtered.filter(d => d.access_status === "running").length;
   const completedCount = filtered.filter(d => d.access_status === "completed").length;
+  const failedCount = filtered.filter(d => d.access_status === "failed").length;
+  const pendingCount = filtered.filter(d => d.access_status === "pending").length;
 
   return (
     <main style={{ flex: 1, overflowY: "auto", padding: "24px", background: "#f8fafc", minHeight: "100vh" }}>
@@ -1133,13 +1132,12 @@ function DatasetPageContent() {
       </div>
 
       {/* 统计卡片 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         {[
-          { label: "数据集总数", value: data.length, unit: "个", color: "#3b82f6" },
-          { label: "接入中", value: accessingCount, unit: "个", color: "#f59e0b" },
+          { label: "任务总数", value: data.length, unit: "个", color: "#3b82f6" },
+          { label: "接入中", value: runningCount, unit: "个", color: "#f59e0b" },
           { label: "已完成", value: completedCount, unit: "个", color: "#10b981" },
-          { label: "质量通过", value: data.filter(d => d.quality_status === "passed").length, unit: "个", color: "#8b5cf6" },
-          { label: "协作分支", value: data.reduce((a, d) => a + (d.branches?.length || 0), 0), unit: "个", color: "#ec4899" },
+          { label: "质量通过", value: data.filter(d => d.access_status === "completed" && d.quality_status === "passed").length, unit: "个", color: "#8b5cf6" },
         ].map(card => (
           <div key={card.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
             <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>
@@ -1154,7 +1152,7 @@ function DatasetPageContent() {
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 300 }}>
           <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="搜索数据名称、标签..." style={{ width: "100%", padding: "8px 10px 8px 32px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="搜索任务名称..." style={{ width: "100%", padding: "8px 10px 8px 32px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
         </div>
         <select value={typeFilter} onChange={e => handleFilterChange(setTypeFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
           <option value="">全部类型</option>
@@ -1162,20 +1160,12 @@ function DatasetPageContent() {
         </select>
         <select value={accessFilter} onChange={e => handleFilterChange(setAccessFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
           <option value="">全部状态</option>
-          <option value="accessing">接入中</option>
+          <option value="running">运行中</option>
           <option value="completed">已完成</option>
-          <option value="failed">失败</option>
-          <option value="pending">待接入</option>
+          <option value="stopped">已终止</option>
+          <option value="failed">执行失败</option>
+          <option value="pending">待执行</option>
         </select>
-        <select value={permFilter} onChange={e => handleFilterChange(setPermFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
-          <option value="">全部权限</option>
-          <option value="private">私有</option>
-          <option value="team">团队</option>
-          <option value="public">公开</option>
-        </select>
-        <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", fontSize: 13, cursor: "pointer", color: "#64748b" }}>
-          <Filter size={13} />高级筛选
-        </button>
       </div>
 
       {/* 数据表格 */}
@@ -1183,60 +1173,57 @@ function DatasetPageContent() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              {["数据名称", "数据类型", "接入状态", "数据量", "成功率", "权限", "版本", "协作成员", "操作"].map(h => (
+              {["任务名称", "数据类型", "接入状态", "版本", "操作"].map(h => (
                 <th key={h} style={{ padding: "11px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#64748b", letterSpacing: "0.02em" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((d, i) => (
-              <tr key={d.id} style={{ borderBottom: i < paginatedData.length - 1 ? "1px solid #f1f5f9" : "none", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                <td style={{ padding: "13px 14px" }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{d.name}</div>
-                  <div style={{ display: "flex", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
-                    {d.tags?.slice(0, 2).map(tag => (
-                      <span key={tag} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "#eff6ff", color: "#2563eb" }}>#{tag}</span>
-                    ))}
-                    {d.md5_dedup && <Md5Badge active={true} />}
-                  </div>
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <TypeBadge type={d.type} />
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <AccessStatusBadge status={d.access_status || "pending"} progress={d.access_progress} />
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{d.item_count.toLocaleString()}</td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <AccessRateBadge rate={d.access_rate} />
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}><PermissionBadge perm={d.permission || "private"} /></td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} style={{ padding: "3px 9px", borderRadius: 4, background: "#eff6ff", color: "#2563eb", border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                    v{d.versions[0].version.replace("v", "")} ({d.versions.length})
-                  </button>
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                    {(d.collaborators || []).slice(0, 3).map(c => (
-                      <div key={c} title={c} style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg, #3b82f6, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", border: "2px solid #fff" }}>{c[0]}</div>
-                    ))}
-                    {(d.collaborators || []).length > 3 && (
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#64748b", border: "2px solid #fff" }}>+{d.collaborators!.length - 3}</div>
-                    )}
-                  </div>
-                </td>
-                <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                    <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} title="详情" style={{ padding: 5, border: "none", background: "#f1f5f9", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#64748b" /></button>
-                    <button title="编辑" style={{ padding: 5, border: "none", background: "#eff6ff", borderRadius: 5, cursor: "pointer" }}><Pencil size={13} color="#2563eb" /></button>
-                    <button title="分支" style={{ padding: 5, border: "none", background: "#ecfdf5", borderRadius: 5, cursor: "pointer" }}><GitBranch size={13} color="#10b981" /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {paginatedData.map((d, i) => {
+              const status = d.access_status || "pending";
+              const latestVersion = d.versions[0];
+              const ops = {
+                running: ["detail", "stop"],
+                completed: ["detail"],
+                stopped: ["detail", "start"],
+                failed: ["detail", "start"],
+                pending: ["detail", "stop"],
+              }[status] || ["detail"];
+              return (
+                <tr key={d.id} style={{ borderBottom: i < paginatedData.length - 1 ? "1px solid #f1f5f9" : "none", transition: "background 0.15s" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <td style={{ padding: "13px 14px" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{d.task_name}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{d.name}</div>
+                  </td>
+                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                    <TypeBadge type={d.type} />
+                  </td>
+                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                    <AccessStatusBadge status={status} progress={d.access_progress} />
+                  </td>
+                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                    <span style={{ padding: "3px 9px", borderRadius: 4, background: "#eff6ff", color: "#2563eb", border: "none", fontSize: 11, fontWeight: 600, cursor: "default" }}>
+                      {latestVersion ? `v${latestVersion.version.replace("v", "")}` : "—"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
+                      {ops.includes("detail") && (
+                        <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} title="详情" style={{ padding: 5, border: "none", background: "#f1f5f9", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#64748b" /></button>
+                      )}
+                      {ops.includes("stop") && (
+                        <button title="终止" style={{ padding: 5, border: "none", background: "#fee2e2", borderRadius: 5, cursor: "pointer" }}><AlertCircle size={13} color="#dc2626" /></button>
+                      )}
+                      {ops.includes("start") && (
+                        <button title="启动" style={{ padding: 5, border: "none", background: "#ecfdf5", borderRadius: 5, cursor: "pointer" }}><Play size={13} color="#10b981" /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
