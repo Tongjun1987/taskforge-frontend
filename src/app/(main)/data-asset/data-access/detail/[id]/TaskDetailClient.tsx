@@ -245,29 +245,6 @@ export default function TaskDetailClient() {
             </button>
           </div>
         </div>
-
-        {/* 进度条 */}
-        {(task.access_status === "accessing" || task.access_status === "paused") && (
-          <div style={{ marginTop: 16, padding: "12px 16px", background: "#f8fafc", borderRadius: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: "#334155", fontWeight: 500 }}>采集进度</span>
-              <span style={{ fontSize: 13, color: "#3b82f6", fontWeight: 600 }}>{task.access_progress}%</span>
-            </div>
-            <div style={{ height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{
-                width: `${task.access_progress}%`,
-                height: "100%",
-                background: "linear-gradient(90deg, #3b82f6, #6366f1)",
-                borderRadius: 4,
-                transition: "width 0.3s",
-              }} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "#64748b" }}>
-              <span>已采集：{task.item_count.toLocaleString()} 条</span>
-              <span>成功率：{task.access_rate}%</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Tab 导航 */}
@@ -276,9 +253,7 @@ export default function TaskDetailClient() {
           {[
             { key: "overview", label: "任务概览", icon: Database },
             { key: "monitor", label: "执行监控", icon: Activity },
-            { key: "logs", label: "执行日志", icon: FileText },
-            { key: "storage", label: "存储信息", icon: HardDrive },
-            { key: "trace", label: "数据溯源", icon: Route },
+            { key: "versions", label: "数据版本", icon: History },
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -315,14 +290,12 @@ export default function TaskDetailClient() {
                 {[
                   { label: "任务名称", value: task.name },
                   { label: "数据类型", value: DATA_TYPES[task.type]?.label || task.type },
-                  { label: "数据源类型", value: task.source_name },
-                  { label: "接入协议", value: task.access_protocol || "—" },
                   { label: "采集模式", value: task.collection_mode === "stream" ? "流式实时采集" : "批量离线采集" },
                   { label: "关联任务", value: task.task_name || "—" },
                   { label: "所属项目", value: task.project_name || "—" },
                   { label: "创建人", value: task.creator },
+                  { label: "创建时间", value: task.created_at },
                   { label: "数据权限", value: task.permission === "private" ? "私有" : task.permission === "team" ? "团队" : "公开" },
-                  { label: "MD5去重", value: task.md5_dedup ? "已启用" : "未启用" },
                 ].map(item => (
                   <div key={item.label}>
                     <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{item.label}</div>
@@ -375,26 +348,52 @@ export default function TaskDetailClient() {
             </div>
 
             {/* 数据源信息 */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24, gridColumn: "span 2" }}>
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
                 <Server size={18} color="#3b82f6" />数据源信息
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>数据源类型</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{task.source_name}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {[
+                  { label: "数据源类型", value: task.source_name },
+                  { label: "接入协议", value: task.access_protocol || "—" },
+                  { label: "数据源地址", value: task.source_url || "—", span: true },
+                ].map(item => (
+                  <div key={item.label} style={item.span ? { gridColumn: "span 2" } : {}}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#334155", wordBreak: "break-all" }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 存储信息 */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                <HardDrive size={18} color="#3b82f6" />存储信息
+              </h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {[
+                  { label: "存储位置", value: "平台默认分布式存储" },
+                  { label: "存储路径", value: "/data/access/2026/05/12" },
+                  { label: "存储格式", value: "Parquet" },
+                  { label: "总存储大小", value: "128.5 GB" },
+                  { label: "文件数量", value: "1,284" },
+                  { label: "副本数量", value: "3 个" },
+                ].map(item => (
+                  <div key={item.label}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 }}>存储空间使用</h4>
+                <div style={{ height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: "45%", height: "100%", background: "linear-gradient(90deg, #10b981, #34d399)", borderRadius: 4 }} />
                 </div>
-                <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>接入协议</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{task.access_protocol || "—"}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>数据源地址</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#334155", wordBreak: "break-all" }}>{task.source_url || "—"}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>实时数据流</div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{task.real_time_stream ? "是" : "否"}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "#64748b" }}>
+                  <span>已使用：128.5 GB</span>
+                  <span>剩余：156.3 GB</span>
                 </div>
               </div>
             </div>
@@ -403,59 +402,102 @@ export default function TaskDetailClient() {
 
         {/* 执行监控 */}
         {activeTab === "monitor" && (
-          <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-              <BarChart3 size={18} color="#3b82f6" />采集监控
-            </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 24 }}>
+            {/* 监控图表区域 */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                <BarChart3 size={18} color="#3b82f6" />采集监控
+              </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-              {[
-                { label: "当前采集速率", value: "2,350", unit: "条/秒", color: "#3b82f6" },
-                { label: "今日累计", value: task.item_count.toLocaleString(), unit: "条", color: "#10b981" },
-                { label: "成功率", value: `${task.access_rate || 0}`, unit: "%", color: "#8b5cf6" },
-                { label: "预计完成", value: "剩余约 12 分钟", unit: "", color: "#f59e0b" },
-              ].map(metric => (
-                <div key={metric.label} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{metric.label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: metric.color }}>
-                    {metric.value}<span style={{ fontSize: 13, fontWeight: 400, marginLeft: 4 }}>{metric.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>24小时采集趋势</h4>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120 }}>
-                {monitorData.map((d, i) => (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{
-                      width: "100%",
-                      height: `${(d.count / maxValue) * 100}px`,
-                      background: "linear-gradient(180deg, #3b82f6, #6366f1)",
-                      borderRadius: "4px 4px 0 0",
-                      minHeight: 4,
-                    }} />
-                    <span style={{ fontSize: 9, color: "#94a3b8" }}>{d.time.split(":")[0]}</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+                {[
+                  { label: "当前采集速率", value: "2,350", unit: "条/秒", color: "#3b82f6" },
+                  { label: "今日累计", value: task.item_count.toLocaleString(), unit: "条", color: "#10b981" },
+                  { label: "成功率", value: `${task.access_rate || 0}`, unit: "%", color: "#8b5cf6" },
+                  { label: "预计完成", value: "剩余约 12 分钟", unit: "", color: "#f59e0b" },
+                ].map(metric => (
+                  <div key={metric.label} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{metric.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: metric.color }}>
+                      {metric.value}<span style={{ fontSize: 13, fontWeight: 400, marginLeft: 4 }}>{metric.unit}</span>
+                    </div>
                   </div>
                 ))}
               </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>24小时采集趋势</h4>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120 }}>
+                  {monitorData.map((d, i) => (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <div style={{
+                        width: "100%",
+                        height: `${(d.count / maxValue) * 100}px`,
+                        background: "linear-gradient(180deg, #3b82f6, #6366f1)",
+                        borderRadius: "4px 4px 0 0",
+                        minHeight: 4,
+                      }} />
+                      <span style={{ fontSize: 9, color: "#94a3b8" }}>{d.time.split(":")[0]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>采集节点状态</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  {[
+                    { name: "主节点", status: "running", detail: "CPU: 45% | 内存: 62%" },
+                    { name: "数据处理节点-1", status: "running", detail: "CPU: 78% | 内存: 85%" },
+                    { name: "数据存储节点", status: "running", detail: "磁盘: 156GB/512GB" },
+                  ].map(node => (
+                    <div key={node.name} style={{ padding: 12, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{node.name}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>{node.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>采集节点状态</h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {[
-                  { name: "主节点", status: "running", detail: "CPU: 45% | 内存: 62%" },
-                  { name: "数据处理节点-1", status: "running", detail: "CPU: 78% | 内存: 85%" },
-                  { name: "数据存储节点", status: "running", detail: "磁盘: 156GB/512GB" },
-                ].map(node => (
-                  <div key={node.name} style={{ padding: 12, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{node.name}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>{node.detail}</div>
+            {/* 执行日志区域（合并） */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  <FileText size={18} color="#3b82f6" />执行日志
+                </h3>
+                <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 12, color: "#64748b" }}>
+                  <Download size={14} />导出日志
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {["全部", "信息", "警告", "错误"].map(level => (
+                  <button key={level} style={{
+                    padding: "4px 12px", borderRadius: 4, border: "1px solid",
+                    borderColor: level === "全部" ? "#3b82f6" : "#e2e8f0",
+                    background: level === "全部" ? "#eff6ff" : "#fff",
+                    color: level === "全部" ? "#3b82f6" : "#64748b",
+                    fontSize: 12, cursor: "pointer",
+                  }}>
+                    {level}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ background: "#0f172a", borderRadius: 8, padding: 16, maxHeight: 300, overflowY: "auto" }}>
+                {MOCK_LOGS.map((log, i) => (
+                  <div key={i} style={{ display: "flex", gap: 12, marginBottom: 8, fontSize: 12, fontFamily: "monospace" }}>
+                    <span style={{ color: "#64748b", whiteSpace: "nowrap" }}>{log.time}</span>
+                    <span style={{
+                      padding: "0 6px", borderRadius: 3,
+                      background: log.level === "info" ? "#1e40af" : log.level === "warning" ? "#b45309" : "#991b1b",
+                      color: "#fff",
+                    }}>{log.level.toUpperCase()}</span>
+                    <span style={{ color: "#e2e8f0" }}>{log.message}</span>
                   </div>
                 ))}
               </div>
@@ -463,147 +505,172 @@ export default function TaskDetailClient() {
           </div>
         )}
 
-        {/* 执行日志 */}
-        {activeTab === "logs" && (
+        {/* 数据版本 */}
+        {activeTab === "versions" && (
           <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <FileText size={18} color="#3b82f6" />执行日志
+                <History size={18} color="#3b82f6" />数据版本管理
               </h3>
-              <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "1px solid #e2e8f0", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 12, color: "#64748b" }}>
-                <Download size={14} />导出日志
+              <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #3b82f6", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#3b82f6" }}>
+                <Activity size={14} />创建版本快照
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              {["全部", "信息", "警告", "错误"].map(level => (
-                <button key={level} style={{
-                  padding: "4px 12px", borderRadius: 4, border: "1px solid",
-                  borderColor: level === "全部" ? "#3b82f6" : "#e2e8f0",
-                  background: level === "全部" ? "#eff6ff" : "#fff",
-                  color: level === "全部" ? "#3b82f6" : "#64748b",
-                  fontSize: 12, cursor: "pointer",
-                }}>
-                  {level}
-                </button>
-              ))}
+            {/* 版本说明 */}
+            <div style={{ padding: 16, background: "#f0f9ff", borderRadius: 10, border: "1px solid #e0f2fe", marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: "#0369a1", lineHeight: 1.8 }}>
+                <strong>版本说明：</strong>数据从采集到使用会经历多个阶段，每个阶段都会生成对应的数据版本。
+                静态数据（如图片、文档）按文件快照管理版本；动态数据（如视频流、传感器数据）按时间窗口快照管理版本。
+              </div>
             </div>
 
-            <div style={{ background: "#0f172a", borderRadius: 8, padding: 16, maxHeight: 400, overflowY: "auto" }}>
-              {MOCK_LOGS.map((log, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 8, fontSize: 12, fontFamily: "monospace" }}>
-                  <span style={{ color: "#64748b", whiteSpace: "nowrap" }}>{log.time}</span>
-                  <span style={{
-                    padding: "0 6px", borderRadius: 3,
-                    background: log.level === "info" ? "#1e40af" : log.level === "warning" ? "#b45309" : "#991b1b",
-                    color: "#fff",
-                  }}>{log.level.toUpperCase()}</span>
-                  <span style={{ color: "#e2e8f0" }}>{log.message}</span>
+            {/* 版本列表 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* 采集版本 */}
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3b82f6" }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>采集阶段</span>
+                  <span style={{ fontSize: 11, color: "#64748b", marginLeft: "auto" }}>共 3 个版本</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 存储信息 */}
-        {activeTab === "storage" && (
-          <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-              <HardDrive size={18} color="#3b82f6" />存储信息
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-              {[
-                { label: "存储位置", value: "平台默认分布式存储", color: "#334155" },
-                { label: "存储路径", value: "/data/access/2026/05/12", color: "#334155" },
-                { label: "存储格式", value: "Parquet", color: "#334155" },
-                { label: "文件数量", value: "1,284", color: "#334155" },
-                { label: "总存储大小", value: "128.5 GB", color: "#334155" },
-                { label: "副本数量", value: "3 个", color: "#334155" },
-                { label: "版本数量", value: "1 个", color: "#334155" },
-                { label: "存储空间", value: "已用 45%", color: "#10b981" },
-              ].map(item => (
-                <div key={item.label} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{item.label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: item.color }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>存储空间使用</h4>
-              <div style={{ height: 12, background: "#e2e8f0", borderRadius: 6, overflow: "hidden" }}>
-                <div style={{ width: "45%", height: "100%", background: "linear-gradient(90deg, #10b981, #34d399)", borderRadius: 6 }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "#64748b" }}>
-                <span>已使用：128.5 GB</span>
-                <span>剩余：156.3 GB</span>
-              </div>
-            </div>
-
-            <div>
-              <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>数据访问</h4>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#334155" }}>
-                  <Eye size={14} />预览数据
-                </button>
-                <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#334155" }}>
-                  <Download size={14} />下载数据
-                </button>
-                <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#334155" }}>
-                  <Share2 size={14} />分享链接
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 数据溯源 */}
-        {activeTab === "trace" && (
-          <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 24 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-              <Route size={18} color="#3b82f6" />数据溯源链路
-            </h3>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 32, padding: "24px 0" }}>
-              {[
-                { label: "数据源", sub: task.source_name, icon: Server, color: "#3b82f6" },
-                { label: "数据采集", sub: "采集引擎", icon: Activity, color: "#8b5cf6" },
-                { label: "数据处理", sub: "清洗/转换", icon: Shield, color: "#10b981" },
-                { label: "质量校验", sub: "MD5去重", icon: CheckCircle2, color: "#f59e0b" },
-                { label: "数据存储", sub: "分布式存储", icon: HardDrive, color: "#ec4899" },
-              ].map((node, i) => {
-                const Icon = node.icon;
-                return (
-                  <React.Fragment key={i}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 64, height: 64, borderRadius: 16, background: `${node.color}15`, border: `2px solid ${node.color}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                        <Icon size={24} color={node.color} />
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>{node.label}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>{node.sub}</div>
-                    </div>
-                    {i < 4 && <ChevronRight size={20} color="#94a3b8" />}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div style={{ padding: 16, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>来源信息</h4>
-                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 2 }}>
-                  <div>数据源：{task.source_name}</div>
-                  <div>接入协议：{task.access_protocol || "—"}</div>
-                  <div>创建时间：{task.created_at}</div>
+                <div style={{ padding: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>版本号</th>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>时间范围</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>数据量</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>存储大小</th>
+                        <th style={{ textAlign: "center", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>v1.3 <span style={{ fontSize: 10, color: "#10b981", background: "#dcfce7", padding: "2px 6px", borderRadius: 3, marginLeft: 6 }}>当前</span></td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>2026-05-16 14:00 ~ 现在</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>3,850,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>128.5 GB</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dbeafe", color: "#1d4ed8", fontSize: 11 }}>采集中</span></td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>v1.2</td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>2026-05-15 00:00 ~ 14:00</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>4,210,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>142.3 GB</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontSize: 11 }}>已完成</span></td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>v1.1</td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>2026-05-14 00:00 ~ 24:00</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>3,980,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>135.1 GB</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontSize: 11 }}>已完成</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div style={{ padding: 16, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                <h4 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 12 }}>存储信息</h4>
-                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 2 }}>
-                  <div>存储位置：平台默认存储</div>
-                  <div>存储格式：Parquet</div>
-                  <div>版本：v1.0</div>
+
+              {/* 汇聚版本（新增） */}
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#f59e0b" }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>汇聚阶段</span>
+                  <span style={{ fontSize: 11, color: "#64748b", marginLeft: "auto" }}>基于采集版本，汇聚多个数据源</span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>版本号</th>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>来源版本</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>汇聚数据量</th>
+                        <th style={{ textAlign: "center", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>数据源数</th>
+                        <th style={{ textAlign: "center", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>hj-v1.0 <span style={{ fontSize: 10, color: "#10b981", background: "#dcfce7", padding: "2px 6px", borderRadius: 3, marginLeft: 6 }}>当前</span></td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>v1.2 + 其他采集任务</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>8,520,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "center" }}>3 个</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontSize: 11 }}>已完成</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 清洗版本 */}
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#10b981" }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>清洗阶段</span>
+                  <span style={{ fontSize: 11, color: "#64748b", marginLeft: "auto" }}>共 2 个版本</span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>版本号</th>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>来源版本</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>清洗后数据量</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>过滤率</th>
+                        <th style={{ textAlign: "center", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>cl-v1.2 <span style={{ fontSize: 10, color: "#10b981", background: "#dcfce7", padding: "2px 6px", borderRadius: 3, marginLeft: 6 }}>当前</span></td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>基于 hj-v1.0</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>8,196,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#10b981", textAlign: "right" }}>↓ 3.8%</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontSize: 11 }}>已完成</span></td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>cl-v1.1</td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>基于 v1.1</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>3,820,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#10b981", textAlign: "right" }}>↓ 4.0%</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontSize: 11 }}>已完成</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 标注版本 */}
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#8b5cf6" }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>标注阶段</span>
+                  <span style={{ fontSize: 11, color: "#64748b", marginLeft: "auto" }}>共 1 个版本</span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>版本号</th>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>来源版本</th>
+                        <th style={{ textAlign: "left", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>标注类型</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>已标注</th>
+                        <th style={{ textAlign: "right", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>标注进度</th>
+                        <th style={{ textAlign: "center", padding: "8px 0", color: "#94a3b8", fontWeight: 500 }}>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: "10px 0", color: "#334155", fontWeight: 500 }}>bz-v1.0</td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>基于 cl-v1.2</td>
+                        <td style={{ padding: "10px 0", color: "#64748b" }}>目标检测 - 车辆</td>
+                        <td style={{ padding: "10px 0", color: "#64748b", textAlign: "right" }}>1,250,000 条</td>
+                        <td style={{ padding: "10px 0", color: "#3b82f6", textAlign: "right" }}>32.5%</td>
+                        <td style={{ padding: "10px 0", textAlign: "center" }}><span style={{ padding: "2px 8px", borderRadius: 4, background: "#fef9c3", color: "#ca8a04", fontSize: 11 }}>标注中</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

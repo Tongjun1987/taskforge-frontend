@@ -11,7 +11,7 @@ import {
   ChevronDown, FolderTree, FileCheck, ArrowUpDown, AlertTriangle,
   GitMerge, EyeOff, UserCheck, KeyRound, Target, ChevronLeft, ChevronRight as ChevronRightPage,
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
-  Activity, Loader2, Play
+  Activity, Loader2, Play, Pause
 } from "lucide-react";
 
 interface DatasetVersion {
@@ -74,6 +74,78 @@ interface Dataset {
   source_url?: string;              // 接入源地址
   real_time_stream?: boolean;      // 是否实时流
 }
+
+// ==================== 数据标准接口 ====================
+interface DataStandard {
+  id: string;
+  name: string;
+  description: string;
+  category: "naming" | "format" | "quality" | "security";
+  applicable_types: string[];    // 适用的数据类型
+  key_indicators: string[];      // 关键指标
+  usage_count: number;            // 被任务引用次数
+  template: boolean;             // 是否为模板
+  created_at: string;
+  creator: string;
+}
+
+const DATA_STANDARDS: DataStandard[] = [
+  {
+    id: "std-1",
+    name: "命名规范 GB/T 20235-2015",
+    description: "数据集命名标准化规范，统一命名格式为：场景_类型_版本_日期，确保跨团队数据可追溯。",
+    category: "naming",
+    applicable_types: ["image", "video", "text", "audio", "timeseries"],
+    key_indicators: ["命名格式合规率 ≥ 98%", "命名唯一性 100%", "版本号连续可追"],
+    usage_count: 12,
+    template: true,
+    created_at: "2026-03-01",
+    creator: "系统管理员",
+  },
+  {
+    id: "std-2",
+    name: "数据格式标准 v2.1",
+    description: "规定各类数据的标准存储格式与编码方式，图像统一 JPEG/PNG、文本统一 UTF-8 JSONL、视频统一 MP4 H.264。",
+    category: "format",
+    applicable_types: ["image", "video", "text", "audio", "multimodal"],
+    key_indicators: ["格式合规率 ≥ 99%", "编码一致性 100%", "文件大小限制合规"],
+    usage_count: 18,
+    template: true,
+    created_at: "2026-03-05",
+    creator: "系统管理员",
+  },
+  {
+    id: "std-3",
+    name: "质量分级标准",
+    description: "数据质量三级评分体系：一级（≥95分）可直接用于模型训练，二级（≥85分）需清洗后使用，三级（<85分）建议重新采集。",
+    category: "quality",
+    applicable_types: ["image", "video", "text", "audio", "timeseries", "pointcloud"],
+    key_indicators: ["质量评分覆盖 100%", "自动分级准确率 ≥ 92%", "质量报告生成时效 < 5min"],
+    usage_count: 9,
+    template: false,
+    created_at: "2026-03-10",
+    creator: "质量委员会",
+  },
+  {
+    id: "std-4",
+    name: "安全分类标准",
+    description: "数据敏感度分级规范：L1公开数据、L2内部数据、L3敏感数据、L4机密数据，不同级别对应不同访问控制策略。",
+    category: "security",
+    applicable_types: ["text", "image", "video", "audio", "knowledge"],
+    key_indicators: ["分类覆盖率 100%", "PII检测准确率 ≥ 99%", "访问权限匹配率 100%"],
+    usage_count: 7,
+    template: false,
+    created_at: "2026-03-15",
+    creator: "安全合规部",
+  },
+];
+
+const STANDARD_CATEGORY: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  naming:   { label: "命名规范", color: "#3b82f6", bg: "#eff6ff", icon: Tag },
+  format:   { label: "格式规范", color: "#8b5cf6", bg: "#f3e8ff", icon: FileText },
+  quality:  { label: "质量规范", color: "#10b981", bg: "#ecfdf5", icon: CheckCircle2 },
+  security: { label: "安全规范", color: "#dc2626", bg: "#fef2f2", icon: Shield },
+};
 
 const DATA_TYPES = [
   { value: "image", label: "图像", icon: Image, color: "#8b5cf6" },
@@ -626,6 +698,108 @@ const MOCK_DATASETS: Dataset[] = [
     ],
     created_at: "2026-04-18",
   },
+  // ========== 已终止状态 ==========
+  {
+    id: "sim-access-7",
+    name: "第三方路况API采集",
+    type: "text",
+    source_type: "api",
+    source_name: "高德开放平台API",
+    source_url: "https://restapi.amap.com/v3/traffic/status/district",
+    access_protocol: "API/HTTP",
+    access_status: "stopped",
+    access_progress: 35,
+    access_rate: 0,
+    real_time_stream: false,
+    item_count: 126000,
+    quality_status: "failed",
+    task_name: "交通事件识别",
+    scene_name: "交通事件识别",
+    tags: ["API", "HTTP", "路况", "事件识别"],
+    collaborators: ["李明"],
+    permission: "team",
+    md5_dedup: false,
+    import_format: ["JSON"],
+    versions: [
+      { version: "v1.0", date: "2026-04-15", item_count: 126000, uploader: "李明", note: "已终止", md5: "sim-api-stopped", size: "38 MB", change_log: "因API配额耗尽手动终止" },
+    ],
+    changelog: [
+      { id: "cl-1", action: "接入启动", user: "李明", time: "2026-04-15 09:00", detail: "启动第三方路况API采集任务" },
+      { id: "cl-2", action: "接入终止", user: "李明", time: "2026-04-15 14:30", detail: "API配额耗尽，手动终止接入任务" },
+    ],
+    branches: [
+      { name: "main", creator: "李明", created_at: "2026-04-15", item_count: 126000, status: "active", description: "已终止" },
+    ],
+    created_at: "2026-04-15",
+  },
+  // ========== 执行失败状态 ==========
+  {
+    id: "sim-access-8",
+    name: "路侧激光雷达点云流",
+    type: "pointcloud",
+    source_type: "rtsp",
+    source_name: "路侧激光雷达设备",
+    source_url: "rtsp://10.0.3.10:554/stream/lidar-01",
+    access_protocol: "RTSP",
+    access_status: "failed",
+    access_progress: 18,
+    access_rate: 0,
+    real_time_stream: true,
+    item_count: 0,
+    quality_status: "failed",
+    task_name: "点云目标检测",
+    scene_name: "交通目标检测",
+    tags: ["点云", "激光雷达", "RTSP", "实时流", "目标检测"],
+    collaborators: ["陈志远"],
+    permission: "team",
+    md5_dedup: false,
+    import_format: ["PCD", "LAS"],
+    versions: [
+      { version: "v1.0", date: "2026-04-16", item_count: 0, uploader: "陈志远", note: "执行失败", md5: "sim-lidar-failed", size: "—", change_log: "RTSP流认证失败，设备密码变更未更新" },
+    ],
+    changelog: [
+      { id: "cl-1", action: "接入启动", user: "陈志远", time: "2026-04-16 10:00", detail: "启动路侧激光雷达点云流接入任务" },
+      { id: "cl-2", action: "错误", user: "系统", time: "2026-04-16 10:05", detail: "RTSP 401 Unauthorized：设备密码已变更" },
+      { id: "cl-3", action: "接入终止", user: "系统", time: "2026-04-16 10:05", detail: "认证失败自动终止" },
+    ],
+    branches: [
+      { name: "main", creator: "陈志远", created_at: "2026-04-16", item_count: 0, status: "active", description: "执行失败" },
+    ],
+    created_at: "2026-04-16",
+  },
+  // ========== 待执行状态 ==========
+  {
+    id: "sim-access-9",
+    name: "气象数据Kafka接入",
+    type: "timeseries",
+    source_type: "kafka",
+    source_name: "气象局Kafka集群",
+    source_url: "kafka://weather.gov.cn:9092/weather/forecast",
+    access_protocol: "Kafka",
+    access_status: "pending",
+    access_progress: 0,
+    access_rate: 0,
+    real_time_stream: true,
+    item_count: 0,
+    quality_status: "pending",
+    task_name: "时序建模与异常分析",
+    scene_name: "交通事件识别",
+    tags: ["Kafka", "气象", "时序", "实时流", "天气影响"],
+    collaborators: ["王雪梅"],
+    permission: "team",
+    md5_dedup: false,
+    import_format: ["JSON", "CSV"],
+    versions: [
+      { version: "v1.0", date: "2026-04-22", item_count: 0, uploader: "王雪梅", note: "待执行", md5: "sim-weather-pending", size: "—", change_log: "气象数据Kafka接入任务创建，等待调度" },
+    ],
+    changelog: [
+      { id: "cl-1", action: "任务创建", user: "王雪梅", time: "2026-04-22 09:00", detail: "创建气象数据Kafka接入任务，等待调度执行" },
+    ],
+    branches: [
+      { name: "main", creator: "王雪梅", created_at: "2026-04-22", item_count: 0, status: "active", description: "待执行" },
+    ],
+    created_at: "2026-04-22",
+  },
 ];
 
 function getDatasets(): Dataset[] {
@@ -656,6 +830,17 @@ function QualityBadge({ status }: { status: string }) {
 function TypeBadge({ type }: { type: string }) {
   const t = DATA_TYPES.find(d => d.value === type);
   if (!t) return <span style={{ padding: "2px 8px", borderRadius: 4, background: "#f1f5f9", color: "#64748b", fontSize: 11, fontWeight: 600 }}>未知</span>;
+  const Icon = t.icon;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 4, background: `${t.color}15`, color: t.color, fontSize: 11, fontWeight: 600 }}>
+      <Icon size={12} />{t.label}
+    </span>
+  );
+}
+
+function SourceTypeBadge({ sourceType }: { sourceType: string }) {
+  const t = SOURCE_TYPES.find(d => d.value === sourceType);
+  if (!t) return <span style={{ padding: "2px 8px", borderRadius: 4, background: "#f1f5f9", color: "#64748b", fontSize: 11, fontWeight: 600 }}>—</span>;
   const Icon = t.icon;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 4, background: `${t.color}15`, color: t.color, fontSize: 11, fontWeight: 600 }}>
@@ -1069,12 +1254,20 @@ function DetailModal({ ds, onClose, onRollback }: { ds: Dataset; onClose: () => 
 
 function DatasetPageContent() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"datasets" | "standards">("datasets");
   const [data, setData] = useState<Dataset[]>(MOCK_DATASETS);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [accessFilter, setAccessFilter] = useState(""); // 接入状态筛选
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [activeModal, setActiveModal] = useState<"stop" | "start" | "edit" | "branch" | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [newBranchName, setNewBranchName] = useState("");
+
+  const selectedItem = data.find(d => d.id === selectedId) || null;
 
   useEffect(() => {
     const stored = getDatasets();
@@ -1131,149 +1324,429 @@ function DatasetPageContent() {
         </button>
       </div>
 
-      {/* 统计卡片 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-        {[
-          { label: "任务总数", value: data.length, unit: "个", color: "#3b82f6" },
-          { label: "接入中", value: runningCount, unit: "个", color: "#f59e0b" },
-          { label: "已完成", value: completedCount, unit: "个", color: "#10b981" },
-          { label: "质量通过", value: data.filter(d => d.access_status === "completed" && d.quality_status === "passed").length, unit: "个", color: "#8b5cf6" },
-        ].map(card => (
-          <div key={card.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>
-              {card.value}<span style={{ fontSize: 13, fontWeight: 400, color: "#94a3b8", marginLeft: 2 }}>{card.unit}</span>
-            </div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{card.label}</div>
+      {/* Tab 切换 */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+        {([
+          { key: "datasets", label: "数据采集", icon: Database },
+          { key: "standards", label: "数据标准", icon: FileText },
+        ] as const).map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 18px", borderRadius: 8,
+                border: isActive ? "1px solid #3b82f6" : "1px solid #e2e8f0",
+                background: isActive ? "#eff6ff" : "#fff",
+                color: isActive ? "#3b82f6" : "#64748b",
+                fontSize: 13, fontWeight: isActive ? 600 : 400,
+                cursor: "pointer", transition: "all 0.15s"
+              }}
+            >
+              <Icon size={14} />{tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ===== 数据采集视图 ===== */}
+      {activeTab === "datasets" && (
+        <>
+          {/* 统计卡片 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+            {[
+              { label: "任务总数", value: data.length, unit: "个", color: "#3b82f6" },
+              { label: "接入中", value: runningCount, unit: "个", color: "#f59e0b" },
+              { label: "已完成", value: completedCount, unit: "个", color: "#10b981" },
+              { label: "质量通过", value: data.filter(d => d.access_status === "completed" && d.quality_status === "passed").length, unit: "个", color: "#8b5cf6" },
+            ].map(card => (
+              <div key={card.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>
+                  {card.value}<span style={{ fontSize: 13, fontWeight: 400, color: "#94a3b8", marginLeft: 2 }}>{card.unit}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{card.label}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* 筛选栏 */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 300 }}>
-          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="搜索任务名称..." style={{ width: "100%", padding: "8px 10px 8px 32px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-        </div>
-        <select value={typeFilter} onChange={e => handleFilterChange(setTypeFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
-          <option value="">全部类型</option>
-          {DATA_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <select value={accessFilter} onChange={e => handleFilterChange(setAccessFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
-          <option value="">全部状态</option>
-          <option value="running">运行中</option>
-          <option value="completed">已完成</option>
-          <option value="stopped">已终止</option>
-          <option value="failed">执行失败</option>
-          <option value="pending">待执行</option>
-        </select>
-      </div>
+          {/* 筛选栏 */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 300 }}>
+              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="搜索任务名称..." style={{ width: "100%", padding: "8px 10px 8px 32px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <select value={typeFilter} onChange={e => handleFilterChange(setTypeFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
+              <option value="">全部类型</option>
+              {DATA_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <select value={accessFilter} onChange={e => handleFilterChange(setAccessFilter)(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13, background: "#fff", outline: "none", cursor: "pointer" }}>
+              <option value="">全部状态</option>
+              <option value="running">运行中</option>
+              <option value="completed">已完成</option>
+              <option value="stopped">已终止</option>
+              <option value="failed">执行失败</option>
+              <option value="pending">待执行</option>
+            </select>
+          </div>
 
-      {/* 数据表格 */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              {["任务名称", "数据类型", "接入状态", "版本", "操作"].map(h => (
-                <th key={h} style={{ padding: "11px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#64748b", letterSpacing: "0.02em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((d, i) => {
-              const status = d.access_status || "pending";
-              const latestVersion = d.versions[0];
-              const ops = {
-                running: ["detail", "stop"],
-                completed: ["detail"],
-                stopped: ["detail", "start"],
-                failed: ["detail", "start"],
-                pending: ["detail", "stop"],
-              }[status] || ["detail"];
-              return (
-                <tr key={d.id} style={{ borderBottom: i < paginatedData.length - 1 ? "1px solid #f1f5f9" : "none", transition: "background 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <td style={{ padding: "13px 14px" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{d.task_name}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{d.name}</div>
-                  </td>
-                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                    <TypeBadge type={d.type} />
-                  </td>
-                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                    <AccessStatusBadge status={status} progress={d.access_progress} />
-                  </td>
-                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                    <span style={{ padding: "3px 9px", borderRadius: 4, background: "#eff6ff", color: "#2563eb", border: "none", fontSize: 11, fontWeight: 600, cursor: "default" }}>
-                      {latestVersion ? `v${latestVersion.version.replace("v", "")}` : "—"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                    <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                      {ops.includes("detail") && (
-                        <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} title="详情" style={{ padding: 5, border: "none", background: "#f1f5f9", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#64748b" /></button>
-                      )}
-                      {ops.includes("stop") && (
-                        <button title="终止" style={{ padding: 5, border: "none", background: "#fee2e2", borderRadius: 5, cursor: "pointer" }}><AlertCircle size={13} color="#dc2626" /></button>
-                      )}
-                      {ops.includes("start") && (
-                        <button title="启动" style={{ padding: 5, border: "none", background: "#ecfdf5", borderRadius: 5, cursor: "pointer" }}><Play size={13} color="#10b981" /></button>
-                      )}
-                    </div>
-                  </td>
+          {/* 数据表格 */}
+          <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  {["任务名称", "数据类型", "数据源类型", "接入状态", "数据质检", "版本", "操作"].map(h => (
+                    <th key={h} style={{ padding: "11px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#64748b", letterSpacing: "0.02em" }}>{h}</th>
+                  ))}
                 </tr>
+              </thead>
+              <tbody>
+                {paginatedData.map((d, i) => {
+                  const status = d.access_status || "pending";
+                  const latestVersion = d.versions[0];
+                  const ops = {
+                    running: ["detail", "stop"],
+                    completed: ["detail", "branch"],
+                    stopped: ["detail", "start"],
+                    failed: ["detail", "edit", "start"],
+                    pending: ["detail", "stop"],
+                  }[status] || ["detail"];
+                  return (
+                    <tr key={d.id} style={{ borderBottom: i < paginatedData.length - 1 ? "1px solid #f1f5f9" : "none", transition: "background 0.15s" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "13px 14px" }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{d.task_name}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{d.name}</div>
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <TypeBadge type={d.type} />
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <SourceTypeBadge sourceType={d.source_type} />
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <AccessStatusBadge status={status} progress={d.access_progress} />
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <QualityBadge status={d.quality_status || "pending"} />
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <span style={{ padding: "3px 9px", borderRadius: 4, background: "#eff6ff", color: "#2563eb", border: "none", fontSize: 11, fontWeight: 600, cursor: "default" }}>
+                          {latestVersion ? `v${latestVersion.version.replace("v", "")}` : "—"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
+                          {ops.includes("detail") && (
+                            <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} title="详情" style={{ padding: 5, border: "none", background: "#f1f5f9", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#64748b" /></button>
+                          )}
+                          {ops.includes("stop") && (
+                            <button onClick={() => { setSelectedId(d.id); setActiveModal("stop"); }} title="终止" style={{ padding: 5, border: "none", background: "#fee2e2", borderRadius: 5, cursor: "pointer" }}><AlertCircle size={13} color="#dc2626" /></button>
+                          )}
+                          {ops.includes("start") && (
+                            <button onClick={() => { setSelectedId(d.id); setActiveModal("start"); }} title="执行" style={{ padding: 5, border: "none", background: "#ecfdf5", borderRadius: 5, cursor: "pointer" }}><Play size={13} color="#10b981" /></button>
+                          )}
+                          {ops.includes("edit") && (
+                            <button onClick={() => { setSelectedId(d.id); setActiveModal("edit"); }} title="编辑" style={{ padding: 5, border: "none", background: "#fef3c7", borderRadius: 5, cursor: "pointer" }}><Pencil size={13} color="#d97706" /></button>
+                          )}
+                          {ops.includes("branch") && (
+                            <button onClick={() => { setSelectedId(d.id); setActiveModal("branch"); }} title="协作分支" style={{ padding: 5, border: "none", background: "#ede9fe", borderRadius: 5, cursor: "pointer" }}><GitBranch size={13} color="#7c3aed" /></button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* 分页 */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ fontSize: 13, color: "#64748b" }}>
+                共 <span style={{ fontWeight: 600, color: "#334155" }}>{totalCount}</span> 条数据，当前第 <span style={{ fontWeight: 600, color: "#334155" }}>{page}</span> / {totalPages} 页
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: page === 1 ? "not-allowed" : "pointer", color: page === 1 ? "#cbd5e1" : "#334155", opacity: page === 1 ? 0.5 : 1 }}>
+                  <ChevronLeft size={14} />上一页
+                </button>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let p = i + 1;
+                    if (totalPages > 5) {
+                      if (page > 3) {
+                        p = page - 2 + i;
+                        if (p > totalPages) p = totalPages - 4 + i;
+                      }
+                    }
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        style={{ width: 32, height: 32, borderRadius: 6, border: "1px solid", borderColor: page === p ? "#3b82f6" : "#e2e8f0", background: page === p ? "#3b82f6" : "#fff", color: page === p ? "#fff" : "#334155", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: page === totalPages ? "not-allowed" : "pointer", color: page === totalPages ? "#cbd5e1" : "#334155", opacity: page === totalPages ? 0.5 : 1 }}>
+                  下一页<ChevronRightPage size={14} />
+                </button>
+              </div>
+            </div>
+
+            {filtered.length === 0 && (
+              <div style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
+                <Database size={36} style={{ marginBottom: 10, opacity: 0.4 }} />
+                <p style={{ fontSize: 14 }}>未找到匹配的数据</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ===== 数据标准视图 ===== */}
+      {activeTab === "standards" && (
+        <>
+          {/* 标准统计卡片 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+            {[
+              { label: "标准总数", value: DATA_STANDARDS.length, unit: "项", color: "#3b82f6" },
+              { label: "模板标准", value: DATA_STANDARDS.filter(s => s.template).length, unit: "项", color: "#8b5cf6" },
+              { label: "被引用次数", value: DATA_STANDARDS.reduce((s, d) => s + d.usage_count, 0), unit: "次", color: "#10b981" },
+              { label: "覆盖数据类型", value: Array.from(new Set(DATA_STANDARDS.flatMap(s => s.applicable_types))).length, unit: "类", color: "#f59e0b" },
+            ].map(card => (
+              <div key={card.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>
+                  {card.value}<span style={{ fontSize: 13, fontWeight: 400, color: "#94a3b8", marginLeft: 2 }}>{card.unit}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{card.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* 标准卡片网格 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 20 }}>
+            {DATA_STANDARDS.map(std => {
+              const cat = STANDARD_CATEGORY[std.category];
+              const CatIcon = cat.icon;
+              return (
+                <div key={std.id} style={{
+                  background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
+                  padding: 20, transition: "box-shadow 0.15s",
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)")}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
+                >
+                  {/* 卡片头部 */}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <CatIcon size={18} color={cat.color} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{std.name}</div>
+                        <span style={{ display: "inline-block", marginTop: 2, padding: "1px 7px", borderRadius: 4, fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color }}>
+                          {cat.label}
+                        </span>
+                      </div>
+                    </div>
+                    {std.template && (
+                      <span style={{ padding: "2px 8px", borderRadius: 4, background: "#f3e8ff", color: "#7c3aed", fontSize: 11, fontWeight: 600 }}>
+                        模板
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 描述 */}
+                  <p style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6, margin: "0 0 14px" }}>{std.description}</p>
+
+                  {/* 适用数据类型 */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>适用类型</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {std.applicable_types.map(t => {
+                        const dt = DATA_TYPES.find(d => d.value === t);
+                        if (!dt) return null;
+                        return <span key={t} style={{ padding: "2px 8px", borderRadius: 4, background: `${dt.color}15`, color: dt.color, fontSize: 11, fontWeight: 500 }}>{dt.label}</span>;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 关键指标 */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>关键指标</div>
+                    {std.key_indicators.map((ind, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <CheckCircle2 size={11} color="#10b981" />
+                        <span style={{ fontSize: 12, color: "#475569" }}>{ind}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 底部操作栏 */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                    <span style={{ fontSize: 11, color: "#94a3b8" }}>引用 {std.usage_count} 个任务 · {std.creator} · {std.created_at}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button style={{ padding: "5px 10px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", fontSize: 11, cursor: "pointer", color: "#64748b" }}>查看</button>
+                      <button style={{ padding: "5px 10px", border: "none", borderRadius: 5, background: "#3b82f6", fontSize: 11, cursor: "pointer", color: "#fff" }}>应用</button>
+                    </div>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-
-        {/* 分页 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
-          <div style={{ fontSize: 13, color: "#64748b" }}>
-            共 <span style={{ fontWeight: 600, color: "#334155" }}>{totalCount}</span> 条数据，当前第 <span style={{ fontWeight: 600, color: "#334155" }}>{page}</span> / {totalPages} 页
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: page === 1 ? "not-allowed" : "pointer", color: page === 1 ? "#cbd5e1" : "#334155", opacity: page === 1 ? 0.5 : 1 }}>
-              <ChevronLeft size={14} />上一页
-            </button>
-            <div style={{ display: "flex", gap: 4 }}>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let p = i + 1;
-                if (totalPages > 5) {
-                  if (page > 3) {
-                    p = page - 2 + i;
-                    if (p > totalPages) p = totalPages - 4 + i;
-                  }
-                }
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: "1px solid", borderColor: page === p ? "#3b82f6" : "#e2e8f0", background: page === p ? "#3b82f6" : "#fff", color: page === p ? "#fff" : "#334155", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    {p}
+        </>
+      )}
+
+      {/* ===== 操作弹窗 ===== */}
+      {activeModal && selectedItem && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.45)", zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center"
+        }}
+          onClick={() => setActiveModal(null)}>
+          <div style={{
+            background: "#fff", borderRadius: 14, padding: 28, width: 480,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.15)"
+          }}
+            onClick={e => e.stopPropagation()}>
+            {/* 终止确认 */}
+            {activeModal === "stop" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <AlertCircle size={20} color="#dc2626" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>确认终止任务</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>终止后任务将停止运行，可重新执行</div>
+                  </div>
+                </div>
+                <div style={{ background: "#f8fafc", borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 13, color: "#334155" }}>
+                  <strong>{selectedItem.name}</strong>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{selectedItem.task_name}</div>
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setActiveModal(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>取消</button>
+                  <button onClick={() => {
+                    const updated = data.map(d => d.id === selectedItem.id ? { ...d, access_status: "stopped" as const, access_progress: 0 } : d);
+                    setData(updated); saveDatasets(updated as any); setActiveModal(null);
+                  }} style={{ padding: "9px 20px", border: "none", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>确认终止</button>
+                </div>
+              </>
+            )}
+
+            {/* 执行确认 */}
+            {activeModal === "start" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Play size={20} color="#10b981" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>确认执行任务</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>任务将重新启动数据接入</div>
+                  </div>
+                </div>
+                <div style={{ background: "#f8fafc", borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 13, color: "#334155" }}>
+                  <strong>{selectedItem.name}</strong>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{selectedItem.task_name}</div>
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setActiveModal(null)} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>取消</button>
+                  <button onClick={() => {
+                    const updated = data.map(d => d.id === selectedItem.id ? { ...d, access_status: "running" as const, access_progress: 0 } : d);
+                    setData(updated); saveDatasets(updated as any); setActiveModal(null);
+                  }} style={{ padding: "9px 20px", border: "none", borderRadius: 8, background: "#10b981", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>确认执行</button>
+                </div>
+              </>
+            )}
+
+            {/* 编辑弹窗 */}
+            {activeModal === "edit" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <Pencil size={18} color="#d97706" />
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>编辑任务</span>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>任务名称</label>
+                  <input value={editName || selectedItem.name} onChange={e => setEditName(e.target.value)}
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>描述</label>
+                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3}
+                    placeholder="请输入任务描述"
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, resize: "vertical", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => { setActiveModal(null); setEditName(""); setEditDesc(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>取消</button>
+                  <button onClick={() => {
+                    const updated = data.map(d => d.id === selectedItem.id ? { ...d, name: editName || d.name } : d);
+                    setData(updated); saveDatasets(updated as any); setActiveModal(null); setEditName(""); setEditDesc("");
+                  }} style={{ padding: "9px 20px", border: "none", borderRadius: 8, background: "#d97706", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>保存</button>
+                </div>
+              </>
+            )}
+
+            {/* 协作分支弹窗 */}
+            {activeModal === "branch" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <GitBranch size={18} color="#7c3aed" />
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>协作分支</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 240, overflowY: "auto" }}>
+                  {(selectedItem.branches || []).map(b => (
+                    <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <GitBranch size={14} color="#3b82f6" />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", fontFamily: "monospace" }}>{b.name}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{b.creator} · {b.item_count.toLocaleString()} 条</div>
+                      </div>
+                      <span style={{ padding: "2px 8px", borderRadius: 4, background: b.status === "active" ? "#dcfce7" : "#f1f5f9", color: b.status === "active" ? "#15803d" : "#64748b", fontSize: 10, fontWeight: 600 }}>
+                        {b.status === "active" ? "活跃" : b.status === "merged" ? "已合并" : b.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  <input value={newBranchName} onChange={e => setNewBranchName(e.target.value)}
+                    placeholder="输入新分支名称，如 feature/xxx"
+                    style={{ flex: 1, padding: "8px 12px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <button disabled={!newBranchName.trim()} onClick={() => {
+                    const updated = data.map(d => d.id === selectedItem.id ? {
+                      ...d, branches: [...(d.branches || []), {
+                        name: newBranchName.trim(), creator: "当前用户",
+                        created_at: new Date().toISOString().split("T")[0],
+                        item_count: 0, status: "active" as "active", description: "新建分支"
+                      }]
+                    } : d);
+                    setData(updated as any); saveDatasets(updated as any); setNewBranchName("");
+                  }}
+                    style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: newBranchName.trim() ? "#7c3aed" : "#e2e8f0", color: "#fff", fontSize: 13, fontWeight: 600, cursor: newBranchName.trim() ? "pointer" : "not-allowed" }}>
+                    新建分支
                   </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", fontSize: 12, cursor: page === totalPages ? "not-allowed" : "pointer", color: page === totalPages ? "#cbd5e1" : "#334155", opacity: page === totalPages ? 0.5 : 1 }}>
-              下一页<ChevronRightPage size={14} />
-            </button>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button onClick={() => { setActiveModal(null); setNewBranchName(""); }} style={{ padding: "9px 20px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>关闭</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
-
-        {filtered.length === 0 && (
-          <div style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
-            <Database size={36} style={{ marginBottom: 10, opacity: 0.4 }} />
-            <p style={{ fontSize: 14 }}>未找到匹配的数据</p>
-          </div>
-        )}
-      </div>
+      )}
 
     </main>
   );

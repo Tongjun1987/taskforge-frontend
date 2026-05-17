@@ -20,6 +20,7 @@ interface BasicInfo {
   project_name: string;
   related_task: string;
   description: string;
+  detail: string; // 任务详情
 }
 
 interface DataSourceConfig {
@@ -315,6 +316,15 @@ const TASK_OPTIONS: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
+function HintTip({ text }: { text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6, padding: "6px 10px", background: "#f0f9ff", borderRadius: 6, border: "1px solid #e0f2fe" }}>
+      <Info size={12} color="#0284c7" style={{ flexShrink: 0, marginTop: 1 }} />
+      <span style={{ fontSize: 11, color: "#0369a1", lineHeight: 1.6 }}>{text}</span>
+    </div>
+  );
+}
+
 function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Partial<BasicInfo>) => void }) {
   const taskOptions = TASK_OPTIONS[data.project_name] || [];
 
@@ -323,7 +333,28 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
       <div style={{ display: "flex", gap: 24 }}>
         {/* 左侧表单 */}
         <div style={{ flex: 1 }}>
-          <InputField label="任务名称" value={data.name} onChange={v => onChange({ name: v })} placeholder="请输入数据接入任务名称" required />
+          <InputField
+            label="任务名称"
+            value={data.name}
+            onChange={v => onChange({ name: v })}
+            placeholder="请输入数据接入任务名称"
+            required
+          />
+          <HintTip text="作为任务的唯一标识，建议使用业务含义清晰的中文名称，如「G15高速视频流采集」" />
+
+          <div style={{ marginTop: 0 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#475569", marginBottom: 8 }}>
+              任务详情 <span style={{ color: "#94a3b8", fontWeight: 400 }}>（选填）</span>
+            </label>
+            <textarea
+              value={data.detail || ""}
+              onChange={e => onChange({ detail: e.target.value })}
+              placeholder="请输入任务描述，如数据来源、业务背景、接入目的等"
+              rows={4}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontFamily: "inherit", color: "#334155", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.6 }}
+            />
+          </div>
+          <HintTip text="详细描述有助于后续运维人员理解接入背景，不填不影响任务创建" />
 
           <SelectField
             label="数据类型"
@@ -333,6 +364,7 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
             placeholder="请选择数据类型"
             required
           />
+          <HintTip text="数据类型决定后续支持的文件格式、解析方式及采集协议，选择后不可随意变更" />
 
           <SelectField
             label="所属项目"
@@ -342,6 +374,7 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
             placeholder="请选择所属项目"
             required
           />
+          <HintTip text="选择该任务所属的业务场景大类，对应任务建模中的项目维度" />
 
           {data.project_name && (
             <SelectField
@@ -353,20 +386,9 @@ function Step1BasicInfo({ data, onChange }: { data: BasicInfo; onChange: (d: Par
               required
             />
           )}
-        </div>
-
-        {/* 右侧提示 */}
-        <div style={{ width: 280, padding: 20, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", height: "fit-content" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <Info size={16} color="#3b82f6" />
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>填写说明</span>
-          </div>
-          <ul style={{ fontSize: 12, color: "#64748b", lineHeight: 1.8, paddingLeft: 16, margin: 0 }}>
-            <li>任务名称将作为数据接入任务的唯一标识</li>
-            <li>数据类型决定支持的数据格式和采集方式</li>
-            <li>所属项目关联任务建模中的场景</li>
-            <li>关联任务用于将数据接入任务归属到具体建模任务</li>
-          </ul>
+          {data.project_name && (
+            <HintTip text="将数据接入任务绑定到具体建模任务，便于数据血缘追溯和任务统一管理" />
+          )}
         </div>
       </div>
     </div>
@@ -894,6 +916,12 @@ function Step4Confirm({ basicInfo, dataSource, collectionStorage }: {
                   <div style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{item.value}</div>
                 </div>
               ))}
+              {basicInfo.detail && (
+                <div style={{ padding: "8px 0" }}>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>任务详情</div>
+                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{basicInfo.detail}</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -963,6 +991,7 @@ function Step4Confirm({ basicInfo, dataSource, collectionStorage }: {
                   task_name: PROJECT_OPTIONS.find(p => p.value === basicInfo.project_name)?.label || "",
                   project_name: basicInfo.project_name,
                   related_task: basicInfo.related_task,
+                  detail: basicInfo.detail,
                   source_type: dataSource.source_type,
                   collection_mode: collectionStorage.collection_mode,
                   access_status: "pending",
@@ -1005,6 +1034,7 @@ export default function CreateDataAccessPage() {
     project_name: "",
     related_task: "",
     description: "",
+    detail: "",
   });
 
   const [dataSource, setDataSource] = useState<DataSourceConfig>({

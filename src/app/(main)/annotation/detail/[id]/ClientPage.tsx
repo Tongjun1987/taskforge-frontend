@@ -5,7 +5,7 @@ import {
   ArrowLeft, Play, Users, CheckCircle2, AlertCircle, Clock,
   BarChart3, Tag, Calendar, Hash, FileText, Database
 } from "lucide-react";
-import { MOCK_JOBS, STORAGE_KEY } from "../../_mock";
+import { MOCK_JOBS, STORAGE_KEY, ANNOTATION_TYPES } from "../../_mock";
 
 function getJobs() {
   if (typeof window === "undefined") return [...MOCK_JOBS];
@@ -16,69 +16,126 @@ function getJobs() {
 }
 
 // 根据标注模板描述配置信息
-const TEMPLATE_META: Record<string, { label: string; color: string; fields: { label: string; value: (job: any) => string }[] }> = {
-  image_classify: {
-    label: "图片分类", color: "#8b5cf6",
-    fields: [
-      { label: "分类方式", value: () => "单图单标签" },
-      { label: "标签数量", value: () => "4 类" },
-      { label: "标注格式", value: () => "JSON" },
+type FieldItem = { label: string; value: string };
+const TEMPLATE_META: Record<string, { label: string; color: string; fields: (j: any) => FieldItem[] }> = {
+  // ── 文本标注 ──────────────────────────────────────────────
+  text_annotation: {
+    label: "文本标注", color: "#2563eb",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "文本标注" },
+      { label: "标注格式", value: j.annotation_type === "ner" ? "BIO / BIESO" : "JSONL" },
+      { label: "实体/类别", value: j.annotation_type === "ner" ? "PER / ORG / LOC / TIME" : "多级分类" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  object_detect: {
-    label: "目标检测", color: "#ec4899",
-    fields: [
-      { label: "框标注", value: () => "矩形框" },
-      { label: "目标类别", value: () => "4 类" },
-      { label: "标注格式", value: () => "COCO" },
+  // ── 图像标注 ─────────────────────────────────────────────
+  image_annotation: {
+    label: "图像标注", color: "#7c3aed",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "图像标注" },
+      { label: "标注格式", value: j.annotation_type === "ocr" ? "JSON" : j.annotation_type === "keypoint" ? "COCO-Keypoints" : "COCO" },
+      { label: "标签数量", value: j.annotation_type === "keypoint" ? "17点 / 人体" : "多类别" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  text_classify: {
-    label: "文本分类", color: "#3b82f6",
-    fields: [
-      { label: "分类方式", value: () => "单标签分类" },
-      { label: "类别数量", value: () => "3 类" },
-      { label: "标注格式", value: () => "JSONL" },
+  // ── 视频标注 ─────────────────────────────────────────────
+  video_annotation: {
+    label: "视频标注", color: "#dc2626",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "视频标注" },
+      { label: "帧率", value: "30 FPS" },
+      { label: "标注精度", value: j.annotation_type === "event" ? "事件级" : "帧级" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  ner: {
-    label: "实体识别", color: "#6366f1",
-    fields: [
-      { label: "标注方式", value: () => "片段标注" },
-      { label: "实体类型", value: () => "PER / ORG / LOC / MISC" },
-      { label: "标注格式", value: () => "BIO" },
+  // ── 音频标注 ─────────────────────────────────────────────
+  audio_annotation: {
+    label: "音频标注", color: "#d97706",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "音频标注" },
+      { label: "采样率", value: "16000 Hz" },
+      { label: "格式", value: "WAV / MP3" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  sentiment: {
-    label: "情感分析", color: "#f59e0b",
-    fields: [
-      { label: "情感粒度", value: () => "5 级情感" },
-      { label: "维度", value: () => "正负向" },
-      { label: "标注格式", value: () => "JSONL" },
+  // ── 点云三维标注 ─────────────────────────────────────────
+  pointcloud_anno: {
+    label: "点云三维标注", color: "#059669",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "3D点云目标检测" },
+      { label: "标注格式", value: "KITTI / OpenPCDet" },
+      { label: "坐标系", value: "LiDAR 坐标系" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  audio_classify: {
-    label: "音频分类", color: "#10b981",
-    fields: [
-      { label: "分类维度", value: () => "情绪识别" },
-      { label: "类别数量", value: () => "5 类" },
-      { label: "采样率", value: () => "16000 Hz" },
+  // ── 多模态对齐标注 ───────────────────────────────────────
+  multimodal_anno: {
+    label: "多模态对齐标注", color: "#db2777",
+    fields: (j: any) => [
+      { label: "标注类型", value: ANNOTATION_TYPES[j.annotation_type]?.label || "图文对齐" },
+      { label: "模态组合", value: "图像 + 文本" },
+      { label: "标注格式", value: "JSONL" },
+      { label: "数据集", value: j.dataset_name || "—" },
     ]
   },
-  video_classify: {
-    label: "视频分类", color: "#f97316",
-    fields: [
-      { label: "分类粒度", value: () => "片段级" },
-      { label: "类别数量", value: () => "5 类" },
-      { label: "帧率", value: () => "30 FPS" },
+  // ── SFT监督微调标注 ──────────────────────────────────────
+  sft_annotation: {
+    label: "SFT监督微调标注", color: "#0284c7",
+    fields: () => [
+      { label: "任务类型", value: "Instruction-Input-Output" },
+      { label: "样本格式", value: "ChatML / Alpaca" },
+      { label: "质量要求", value: "专家审核" },
+      { label: "质量维度", value: "有用性 / 安全性 / 流畅性" },
     ]
   },
-  action_detect: {
-    label: "行为检测", color: "#ec4899",
-    fields: [
-      { label: "检测类型", value: () => "时序检测" },
-      { label: "行为类别", value: () => "10 类" },
-      { label: "时序精度", value: () => "帧级" },
+  // ── DPO偏好优化标注 ──────────────────────────────────────
+  dpo_annotation: {
+    label: "DPO偏好优化标注", color: "#7c3aed",
+    fields: () => [
+      { label: "任务类型", value: "Chosen / Rejected 偏好对" },
+      { label: "标注方式", value: "2选1偏好对比" },
+      { label: "样本格式", value: "JSONL" },
+      { label: "审核要求", value: "双盲标注" },
+    ]
+  },
+  // ── PPO/RLHF样本构建 ─────────────────────────────────────
+  ppo_annotation: {
+    label: "PPO/RLHF样本构建", color: "#ea580c",
+    fields: () => [
+      { label: "任务类型", value: "奖励模型训练数据" },
+      { label: "评分维度", value: "有用性 / 安全性 / 准确度" },
+      { label: "评分范围", value: "1~5 分制" },
+      { label: "样本格式", value: "JSON" },
+    ]
+  },
+  // ── CoT思维链推理标注 ────────────────────────────────────
+  cot_annotation: {
+    label: "CoT思维链推理标注", color: "#16a34a",
+    fields: () => [
+      { label: "任务类型", value: "中间推理步骤标注" },
+      { label: "推理节点", value: "多步因果链" },
+      { label: "样本格式", value: "Chain-of-Thought JSON" },
+      { label: "专家要求", value: "领域专家审核" },
+    ]
+  },
+  // ── ToT树状推理标注 ──────────────────────────────────────
+  tot_annotation: {
+    label: "ToT树状推理标注", color: "#d97706",
+    fields: () => [
+      { label: "任务类型", value: "多分支推理路径" },
+      { label: "分支策略", value: "树状思维结构" },
+      { label: "样本格式", value: "Tree-of-Thought JSON" },
+      { label: "路径评估", value: "最优路径标注" },
+    ]
+  },
+  // ── GoT图状推理标注 ──────────────────────────────────────
+  got_annotation: {
+    label: "GoT图状推理标注", color: "#be185d",
+    fields: () => [
+      { label: "任务类型", value: "图结构推理过程" },
+      { label: "图结构", value: "Graph-of-Thought" },
+      { label: "节点类型", value: "推理节点 + 关系边" },
+      { label: "样本格式", value: "Graph JSON" },
     ]
   },
 };
@@ -248,12 +305,12 @@ export default function AnnotationDetailClient() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-              {meta.fields.map(f => (
+              {(() => { const fields = typeof meta.fields === "function" ? meta.fields(job) : meta.fields; return fields.map(f => (
                 <div key={f.label} style={{ padding: 14, borderRadius: 8, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>{f.label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{f.value(job)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{f.value}</div>
                 </div>
-              ))}
+              )); })()}
             </div>
           </div>
         )}

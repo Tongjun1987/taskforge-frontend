@@ -32,6 +32,58 @@ interface CleaningJob {
   created_at: string;
 }
 
+// ==================== 清洗算子接口 ====================
+interface CleaningOperator {
+  id: string;
+  name: string;
+  description: string;
+  data_type: string;        // 适用数据类型
+  category: "dedup" | "filter" | "transform" | "quality";
+  params?: Record<string, any>;
+  usage_count: number;
+  avg_effectiveness?: string;  // 平均剔除率
+  created_at: string;
+}
+
+const MOCK_OPERATORS: CleaningOperator[] = [
+  // 文本类算子
+  { id: "op-text-dedup", name: "文本去重", description: "基于 SimHash + MinHash 双重算法检测并去除重复文本，保留最早出现的记录。", data_type: "text", category: "dedup", usage_count: 8, avg_effectiveness: "6.8%", created_at: "2026-03-01" },
+  { id: "op-text-format", name: "格式校验", description: "校验文本编码格式（UTF-8）、JSON 结构完整性、必填字段存在性，自动修复或标记问题样本。", data_type: "text", category: "quality", usage_count: 6, avg_effectiveness: "4.2%", created_at: "2026-03-02" },
+  { id: "op-text-pii", name: "PII检测", description: "识别并脱敏个人信息（姓名/身份证/手机号/邮箱/地址），支持自定义正则规则库。", data_type: "text", category: "filter", usage_count: 5, avg_effectiveness: "2.1%", created_at: "2026-03-03" },
+  { id: "op-text-dirty", name: "脏数据过滤", description: "过滤乱码、低信息量、广告文本、特殊字符异常等低质量文本内容。", data_type: "text", category: "filter", usage_count: 7, avg_effectiveness: "8.5%", created_at: "2026-03-04" },
+  { id: "op-text-length", name: "长度检查", description: "过滤超出长度阈值（max 4096 tokens）或过短（< 5 字符）的无效文本。", data_type: "text", category: "filter", usage_count: 4, avg_effectiveness: "3.7%", created_at: "2026-03-05" },
+  // 图像类算子
+  { id: "op-img-dedup", name: "图像Hash去重", description: "使用 pHash / aHash / dHash 计算图片感知哈希，去除视觉相似或完全相同的图片。", data_type: "image", category: "dedup", usage_count: 6, avg_effectiveness: "5.3%", created_at: "2026-03-06" },
+  { id: "op-img-res", name: "分辨率校验", description: "过滤分辨率低于 64×64 像素的图片，可配置最低分辨率阈值。", data_type: "image", category: "filter", usage_count: 5, avg_effectiveness: "3.9%", created_at: "2026-03-07" },
+  { id: "op-img-corrupt", name: "损坏检测", description: "使用 PIL/OpenCV 检测图片文件是否损坏或无法解码，自动剔除问题图片。", data_type: "image", category: "quality", usage_count: 4, avg_effectiveness: "1.2%", created_at: "2026-03-08" },
+  // 视频类算子
+  { id: "op-video-blur", name: "去模糊", description: "基于 Laplacian 方差检测画面模糊程度，过滤方差低于阈值的视频帧。", data_type: "video", category: "filter", usage_count: 5, avg_effectiveness: "7.1%", created_at: "2026-03-09" },
+  { id: "op-video-normalize", name: "归一化", description: "统一视频编码格式（H.264）、分辨率、帧率（30fps），重采样音频为 AAC 44.1kHz。", data_type: "video", category: "transform", usage_count: 3, avg_effectiveness: "—", created_at: "2026-03-10" },
+  { id: "op-video-frame", name: "帧抽稀", description: "按指定间隔（如每隔5帧）采样，去除冗余帧，同时保留关键动作帧。", data_type: "video", category: "transform", usage_count: 4, avg_effectiveness: "12.5%", created_at: "2026-03-11" },
+  // 音频类算子
+  { id: "op-audio-silence", name: "静音检测", description: "检测音频文件中的静音段（< -50dB），过滤静音比例超过 80% 的样本。", data_type: "audio", category: "filter", usage_count: 3, avg_effectiveness: "9.2%", created_at: "2026-03-12" },
+  { id: "op-audio-noise", name: "噪声检测", description: "使用信噪比（SNR）评估音频质量，过滤 SNR < 10dB 的含噪样本。", data_type: "audio", category: "filter", usage_count: 3, avg_effectiveness: "6.8%", created_at: "2026-03-13" },
+  // 时序类算子
+  { id: "op-ts-outlier", name: "异常值过滤", description: "使用 Z-Score / IQR 方法检测数值异常点，3σ 以外数据标记为异常并处理。", data_type: "timeseries", category: "filter", usage_count: 5, avg_effectiveness: "7.7%", created_at: "2026-03-14" },
+  { id: "op-ts-impute", name: "缺失补全", description: "对时序数据中的缺失值进行线性插值或前向填充，支持最多连续 10 个缺失点。", data_type: "timeseries", category: "transform", usage_count: 4, avg_effectiveness: "—", created_at: "2026-03-15" },
+  { id: "op-ts-smooth", name: "平滑处理", description: "应用 Savitzky-Golay 滤波器对时序数据进行平滑，减少高频噪声干扰。", data_type: "timeseries", category: "transform", usage_count: 3, avg_effectiveness: "—", created_at: "2026-03-16" },
+];
+
+const OPERATOR_CATEGORY: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  dedup:     { label: "去重算子", color: "#7c3aed", bg: "#f3e8ff", icon: Trash2 },
+  filter:    { label: "过滤算子", color: "#dc2626", bg: "#fef2f2", icon: Filter },
+  transform: { label: "转换算子", color: "#2563eb", bg: "#eff6ff", icon: RefreshCw },
+  quality:   { label: "质量算子", color: "#16a34a", bg: "#f0fdf4", icon: CheckCircle2 },
+};
+
+const DATA_TYPE_MAP: Record<string, { label: string; color: string }> = {
+  text:       { label: "文本", color: "#1d4ed8" },
+  image:      { label: "图像", color: "#7c3aed" },
+  video:      { label: "视频", color: "#db2777" },
+  audio:      { label: "音频", color: "#d97706" },
+  timeseries: { label: "时序", color: "#0d9488" },
+};
+
 const MOCK_CLEANING_JOBS: CleaningJob[] = [
   // ========== 交通事件识别场景 - 五核心任务清洗 ==========
   {
@@ -203,6 +255,7 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function DataCleaningPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"jobs" | "operators">("jobs");
   const [jobs, setJobs] = useState<CleaningJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchName, setSearchName] = useState("");
@@ -287,7 +340,38 @@ export default function DataCleaningPage() {
       </div>
 
       <div style={{ padding: "24px 32px" }}>
-        {/* 筛选区 */}
+        {/* Tab 切换 */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+          {([
+            { key: "jobs", label: "清洗任务", icon: Sparkles },
+            { key: "operators", label: "清洗算子", icon: RefreshCw },
+          ] as const).map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "8px 18px", borderRadius: 8,
+                  border: isActive ? "1px solid #10b981" : "1px solid #e2e8f0",
+                  background: isActive ? "#ecfdf5" : "#fff",
+                  color: isActive ? "#10b981" : "#64748b",
+                  fontSize: 13, fontWeight: isActive ? 600 : 400,
+                  cursor: "pointer", transition: "all 0.15s"
+                }}
+              >
+                <Icon size={14} />{tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ===== 清洗任务视图 ===== */}
+        {activeTab === "jobs" && (
+          <>
+            {/* 筛选区 */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
           <div style={{ position: "relative", flex: 1, maxWidth: 320 }}>
             <Search size={15} color="#94a3b8" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
@@ -453,27 +537,92 @@ export default function DataCleaningPage() {
           </div>
         )}
 
-        {/* 清洗算子说明 */}
-        <div style={{ marginTop: 24, padding: "16px 20px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>📋 各数据类型支持的清洗算子</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, fontSize: 12 }}>
-            {[
-              { type: "文本", rules: ["去重", "格式校验", "PII检测", "脏数据过滤", "长度检查"], color: "#1d4ed8" },
-              { type: "图像", rules: ["去模糊", "Hash去重", "分辨率校验", "损坏检测", "格式检查"], color: "#7c3aed" },
-              { type: "视频", rules: ["去模糊", "归一化", "帧抽稀", "损坏检测", "编码格式"], color: "#db2777" },
-              { type: "音频", rules: ["去重", "时长校验", "静音检测", "噪声检测", "采样率检查"], color: "#d97706" },
-              { type: "时序", rules: ["异常值过滤", "缺失补全", "平滑", "去重", "归一化"], color: "#0d9488" },
-            ].map(t => (
-              <div key={t.type} style={{ padding: "12px 14px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 700, color: t.color, marginBottom: 6, fontSize: 12 }}>{t.type}</div>
-                {t.rules.map(r => (
-                  <div key={r} style={{ color: "#64748b", lineHeight: 1.8, fontSize: 11 }}>• {r}</div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+          </>
+        )}
+
+        {/* ===== 清洗算子视图 ===== */}
+        {activeTab === "operators" && (
+          <>
+            {/* 算子统计 */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+              {[
+                { label: "算子总数", value: MOCK_OPERATORS.length, unit: "个", color: "#10b981" },
+                { label: "过滤算子", value: MOCK_OPERATORS.filter(o => o.category === "filter").length, unit: "个", color: "#dc2626" },
+                { label: "去重算子", value: MOCK_OPERATORS.filter(o => o.category === "dedup").length, unit: "个", color: "#7c3aed" },
+                { label: "累计使用", value: MOCK_OPERATORS.reduce((s, o) => s + o.usage_count, 0), unit: "次", color: "#2563eb" },
+              ].map(card => (
+                <div key={card.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: card.color }}>
+                    {card.value}<span style={{ fontSize: 13, fontWeight: 400, color: "#94a3b8", marginLeft: 2 }}>{card.unit}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{card.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 算子卡片网格 */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 18 }}>
+              {MOCK_OPERATORS.map(op => {
+                const cat = OPERATOR_CATEGORY[op.category];
+                const CatIcon = cat.icon;
+                const dt = DATA_TYPE_MAP[op.data_type];
+                return (
+                  <div key={op.id} style={{
+                    background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12,
+                    padding: 18, transition: "box-shadow 0.15s",
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)")}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
+                  >
+                    {/* 卡片头部 */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 9, background: cat.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <CatIcon size={16} color={cat.color} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1e293b" }}>{op.name}</div>
+                          <span style={{ display: "inline-block", marginTop: 2, padding: "1px 7px", borderRadius: 4, fontSize: 10, fontWeight: 600, background: cat.bg, color: cat.color }}>
+                            {cat.label}
+                          </span>
+                        </div>
+                      </div>
+                      <span style={{ padding: "2px 8px", borderRadius: 4, background: dt ? `${dt.color}15` : "#f1f5f9", color: dt ? dt.color : "#64748b", fontSize: 11, fontWeight: 600 }}>
+                        {dt?.label || op.data_type}
+                      </span>
+                    </div>
+
+                    {/* 描述 */}
+                    <p style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6, margin: "0 0 12px" }}>{op.description}</p>
+
+                    {/* 指标行 */}
+                    <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>使用</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "#10b981" }}>{op.usage_count}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>次</span>
+                      </div>
+                      {op.avg_effectiveness && op.avg_effectiveness !== "—" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>平均剔除率</span>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#dc2626" }}>{op.avg_effectiveness}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
+                      <button style={{ flex: 1, padding: "6px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", fontSize: 11, cursor: "pointer", color: "#64748b" }}>查看详情</button>
+                      <button style={{ flex: 1, padding: "6px", border: "none", borderRadius: 5, background: "#10b981", fontSize: 11, cursor: "pointer", color: "#fff", fontWeight: 600 }}>应用到任务</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
 }
+

@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save, CheckCircle2, ChevronRight, Users, GitCompare, Shield, AlertTriangle } from "lucide-react";
 
 const DATA_TYPES = [
@@ -68,8 +68,27 @@ function saveJobs(jobs: any[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
 }
 
-export default function CreateAnnotationPage() {
+// 模板参数 → 表单预填映射
+const TEMPLATE_MAP: Record<string, { data_type: string; hint: string }> = {
+  text_annotation:  { data_type: "text",  hint: "文本标注能力建设：实体识别、关系抽取、情感分析、问答标注" },
+  image_annotation:  { data_type: "image",  hint: "图像标注能力建设：分类、目标检测、语义分割、OCR" },
+  video_annotation:  { data_type: "video",  hint: "视频标注能力建设：视频分类、行为检测、关键帧标注" },
+  audio_annotation:  { data_type: "audio",  hint: "音频标注能力建设：音频分类、语音识别、情绪识别" },
+  pointcloud_anno:  { data_type: "image",  hint: "点云与三维数据标注：3D点云目标检测、场景分割、位姿估计" },
+  multimodal_anno:  { data_type: "image",  hint: "多模态对齐标注：图文对齐、视频-文本对齐、跨模态关联" },
+  sft_annotation:   { data_type: "text",  hint: "SFT 监督微调标注：构建 Instruction-Input-Output 高质量样本" },
+  dpo_annotation:   { data_type: "text",  hint: "DPO 偏好优化标注：标注 chosen/rejected 偏好对" },
+  ppo_annotation:   { data_type: "text",  hint: "PPO/RLHF 样本构建：构建奖励模型训练数据、RLHF样本对" },
+  cot_annotation:   { data_type: "text",  hint: "CoT 思维链推理标注：标注中间推理步骤" },
+  tot_annotation:   { data_type: "text",  hint: "ToT 树状推理标注：标注多分支推理路径" },
+  got_annotation:   { data_type: "text",  hint: "GoT 图状推理标注：标注图结构推理过程" },
+};
+
+// 实际内容组件（useSearchParams 必须在 Suspense 内）
+function CreateAnnotationPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const templateParam = searchParams.get("template");
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
@@ -91,6 +110,14 @@ export default function CreateAnnotationPage() {
 
   const annTypes = ANNOTATION_TYPES[form.data_type] || [];
   const templates = TEMPLATES[form.ann_type] || [];
+
+  // 根据 URL 模板参数预填表单
+  useEffect(() => {
+    if (templateParam && TEMPLATE_MAP[templateParam]) {
+      const { data_type, hint } = TEMPLATE_MAP[templateParam];
+      setForm(f => ({ ...f, data_type, ann_type: "", template: "", name: hint ? `${hint.split("：")[0]}任务` : "" }));
+    }
+  }, [templateParam]);
 
   const handleSubmit = () => {
     if (!form.name || !form.dataset_name || !form.ann_type) {
@@ -145,6 +172,21 @@ export default function CreateAnnotationPage() {
         {step === 1 && (
           <div style={{ background: "#fff", borderRadius: 12, padding: 28, border: "1px solid #e2e8f0" }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 20 }}>基本信息</h3>
+
+            {/* 模板提示 */}
+            {templateParam && TEMPLATE_MAP[templateParam] && (
+              <div style={{ marginBottom: 20, padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ fontSize: 18, marginTop: 1 }}>📋</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 4 }}>已选择标注模板：{templateParam}</div>
+                  <div style={{ fontSize: 12, color: "#15803d", lineHeight: 1.5 }}>{TEMPLATE_MAP[templateParam].hint}</div>
+                </div>
+                <button
+                  onClick={() => { setForm(f => ({ ...f, data_type: "image", ann_type: "", template: "" })); router.push("/annotation/create"); }}
+                  style={{ padding: "4px 10px", borderRadius: 5, border: "1px solid #bbf7d0", background: "#fff", color: "#166534", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >更换模板</button>
+              </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* 数据集名称 */}
@@ -481,3 +523,13 @@ export default function CreateAnnotationPage() {
     </main>
   );
 }
+
+// 导出的页面组件：包裹 Suspense 以支持 useSearchParams
+export default function CreateAnnotationPage() {
+  return (
+    <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#64748b", fontSize: 14 }}>加载中...</div>}>
+      <CreateAnnotationPageContent />
+    </Suspense>
+  );
+}
+
