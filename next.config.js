@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // output: 'export', // 静态导出，仅生产构建时启用
   basePath: process.env.GITHUB_REPOSITORY ? '/taskforge-frontend' : '',
   images: {
     unoptimized: true,

@@ -488,7 +488,19 @@ export function TopNavBar() {
             </div>
           )}
 
-          {/* 版本迭代 */}
+          {/* 需求文档 */}
+          <Link href="/prd" style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 12px", borderRadius: 6,
+            border: "1px solid #e2e8f0",
+            background: "#f0fdf4",
+            textDecoration: "none", cursor: "pointer",
+          }}>
+            <FileText size={13} style={{ color: "#16a34a" }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#16a34a" }}>需求文档</span>
+          </Link>
+
+          {/* 迭代历史 */}
           <Link href="/version-history" style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "6px 12px", borderRadius: 6,
