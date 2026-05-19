@@ -642,7 +642,7 @@ function TableRow({ cells, isHeader = false }: { cells: string[]; isHeader?: boo
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: cells.map((_, i) => i === 0 ? "1.5fr" : "1fr"),
+      gridTemplateColumns: cells.map((_, i) => i === 0 ? "1.5fr" : "1fr").join(" "),
       gap: 12,
       padding: "12px 16px",
       background: isHeader ? "#f8fafc" : "#fff",
