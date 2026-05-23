@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, LogOut, Settings, Bell,
   ChevronDown, Layers, Star, GitBranch, HardDrive,
   Users, FileText, Clock, Search, Sparkles, Brain,
-  Route, Download, Upload
+  Route, Download, Upload, Cloud
 } from "lucide-react";
 
 type NavItem = {
@@ -124,6 +124,30 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/ai-app", icon: Rocket, label: "AI应用中心", badge: "即将上线" },
     ],
   },
+  // ── 数模服务中心 ──────────────────────────────
+  {
+    key: "service-center",
+    icon: Cloud,
+    label: "数模服务中心",
+    children: [
+      {
+        key: "svc-models",
+        icon: Brain,
+        label: "模型服务",
+        children: [
+          { href: "/service/models", icon: Brain, label: "模型服务列表" },
+        ],
+      },
+      {
+        key: "svc-datasets",
+        icon: Database,
+        label: "数据集服务",
+        children: [
+          { href: "/service/datasets", icon: Database, label: "数据集服务列表" },
+        ],
+      },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -135,6 +159,7 @@ export function Sidebar() {
     "data-access": true,
     "model-production": false,
     "ai-app": false,
+    "service-center": false,
   });
 
   useEffect(() => {

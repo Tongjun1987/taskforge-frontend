@@ -226,10 +226,10 @@ export default function DashboardPage() {
         {/* 统计卡片 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {[
-            { label: "业务场景", value: 8, suffix: "个", icon: Target, color: "#3b82f6", bg: "#eff6ff", trend: "+2 本月" },
-            { label: "数据集总量", value: 48000, suffix: "条", icon: Database, color: "#6366f1", bg: "#eef2ff", trend: "+12,400 本周" },
-            { label: "已标注样本", value: 1580, suffix: "条", icon: CheckCircle2, color: "#10b981", bg: "#ecfdf5", trend: "+340 今日" },
-            { label: "模型评测分", value: 87.3, suffix: "%", icon: TrendingUp, color: "#f59e0b", bg: "#fffbeb", trend: "+2.1 vs 基线" },
+            { label: "业务场景", value: stats?.centers?.task_modeling?.scene_count ?? 8, suffix: "个", icon: Target, color: "#3b82f6", bg: "#eff6ff", trend: `+${stats?.centers?.task_modeling?.task_count ?? 2} 任务` },
+            { label: "数据集总量", value: stats?.centers?.data_asset?.item_count ?? stats?.centers?.data_asset?.dataset_count ?? 48000, suffix: "条", icon: Database, color: "#6366f1", bg: "#eef2ff", trend: `${stats?.centers?.data_asset?.dataset_count ?? 20} 数据集` },
+            { label: "已标注样本", value: stats?.centers?.annotation?.labeled_count ?? stats?.centers?.annotation?.job_count ?? 1580, suffix: "条", icon: CheckCircle2, color: "#10b981", bg: "#ecfdf5", trend: `${stats?.centers?.annotation?.job_count ?? 12} 标注任务` },
+            { label: "质量通过率", value: stats?.centers?.quality?.pass_rate ?? 87.3, suffix: "%", icon: TrendingUp, color: "#f59e0b", bg: "#fffbeb", trend: `${stats?.centers?.quality?.passed_count ?? 16} 已通过` },
           ].map((card, i) => {
             const Icon = card.icon;
             return (

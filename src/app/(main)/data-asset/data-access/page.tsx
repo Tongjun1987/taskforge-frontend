@@ -1313,14 +1313,14 @@ function DatasetPageContent() {
             <Target size={20} color="#fff" />
           </div>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>数据接入</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>数据采集</h1>
             <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0 0" }}>数据列表 · 版本控制 · MD5去重 · 多团队协作</p>
           </div>
         </div>
         <button
           onClick={() => typeof window !== "undefined" && (window.location.href = "/data-asset/data-access/create")}
           style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 8, background: "#3b82f6", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <Plus size={16} />新增数据
+          <Plus size={16} />新增数据采集任务
         </button>
       </div>
 

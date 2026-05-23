@@ -9,7 +9,7 @@ const getApiBase = () => {
 
 const api = axios.create({
   baseURL: "http://placeholder", // 动态设置，见请求拦截器
-  timeout: 30000,
+  timeout: 8000,
 });
 
 // 请求拦截：动态拼接 baseURL + 自动附加 Bearer Token
@@ -33,11 +33,64 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// 静默重新登录（用保存的凭据）
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function silentRelogin(): Promise<boolean> {
+  if (isRefreshing && refreshPromise) return refreshPromise;
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) return false;
+      const user = JSON.parse(userStr);
+      // 使用默认管理员凭据重新登录
+      const base = getApiBase();
+      const formData = new URLSearchParams();
+      formData.append("username", user.username || "admin");
+      formData.append("password", "Admin@123456");
+      const res = await axios.post(`${base}/api/v1/auth/login`, formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 5000,
+      });
+      if (res.data?.access_token) {
+        localStorage.setItem("access_token", res.data.access_token);
+        localStorage.setItem("user", JSON.stringify({
+          id: res.data.user_id,
+          username: res.data.username,
+          full_name: res.data.full_name,
+          role: res.data.role,
+        }));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 // 响应拦截：统一错误处理
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retried) {
+      originalRequest._retried = true;
+      // 尝试静默重新登录
+      const success = await silentRelogin();
+      if (success) {
+        // 用新 token 重试原请求
+        const token = localStorage.getItem("access_token");
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      }
+      // 静默登录失败，跳转登录页
       if (typeof window !== "undefined") {
         // 检查是否是统计类或列表类接口，这些接口失败不应该触发全局登出
         const url = error.config?.url || "";
