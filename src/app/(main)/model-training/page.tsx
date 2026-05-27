@@ -286,7 +286,7 @@ function TrainingListTab({ onCreate }: { onCreate: () => void }) {
                       <Package size={12} />保存到模型仓库
                     </button>
                     <button
-                      onClick={() => window.location.href = "/model-testing"}
+                      onClick={() => window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/model-testing"}
                       style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
                       <BarChart3 size={12} />进入模型测试 →
                     </button>

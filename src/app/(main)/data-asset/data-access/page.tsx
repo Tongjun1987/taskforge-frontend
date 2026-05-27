@@ -1318,7 +1318,7 @@ function DatasetPageContent() {
           </div>
         </div>
         <button
-          onClick={() => typeof window !== "undefined" && (window.location.href = "/data-asset/data-access/create")}
+          onClick={() => router.push("/data-asset/data-access/create")}
           style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 8, background: "#3b82f6", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <Plus size={16} />新增数据采集任务
         </button>

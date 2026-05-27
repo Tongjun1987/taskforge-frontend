@@ -486,7 +486,7 @@ function KnowledgeBaseSelector({ selected, onChange }: { selected: string[]; onC
 
       <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
         <button
-          onClick={() => window.location.href = "/knowledge-base"}
+          onClick={() => window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/knowledge-base"}
           style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
           <Plus size={11} />新建知识库
         </button>

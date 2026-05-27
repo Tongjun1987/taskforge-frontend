@@ -297,7 +297,7 @@ export default function ModelEvalPage() {
                   <div style={{ display: "flex", gap: 6 }}>
                     {/* 断点3修复：评测完成 → 进入模型测试 */}
                     <button
-                      onClick={() => window.location.href = "/model-testing"}
+                      onClick={() => window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/model-testing"}
                       style={{ padding: "5px 12px", borderRadius: 5, border: "1px solid #2563eb", background: "#eff6ff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 4, color: "#2563eb", fontWeight: 600 }}>
                       <Beaker size={11} />进入模型测试 →
                     </button>
