@@ -134,7 +134,7 @@ interface MetricCardProps {
   value: number;
   suffix: string;
   trend: string;
-  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{ size?: number | string; style?: React.CSSProperties }>;
   color: string;
   bg: string;
 }
