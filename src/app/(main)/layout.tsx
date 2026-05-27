@@ -21,7 +21,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         {/* 左侧子菜单（按模块动态显示） */}
         <Sidebar />
         {/* 主内容 */}
-        <main style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0, position: "relative", zIndex: 201 }}>
+        <main style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
           {children}
         </main>
       </div>

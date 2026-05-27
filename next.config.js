@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // 静态导出，GitHub Pages 必须
+  output: 'export',
   basePath: process.env.GITHUB_REPOSITORY ? '/taskforge-frontend' : '',
   images: {
     unoptimized: true,

@@ -45,12 +45,11 @@ const PRD_MODULES = [
     icon: BookOpen,
     color: "#3b82f6",
     bgGradient: "#3b82f610",
-    desc: "产品背景、核心价值、目标用户",
+    desc: "产品介绍、产品架构、市场调研",
     sections: [
-      { id: "bg", label: "产品背景" },
-      { id: "value", label: "核心价值" },
-      { id: "users", label: "目标用户" },
-      { id: "terms", label: "术语定义" },
+      { id: "intro", label: "产品介绍" },
+      { id: "architecture", label: "产品架构" },
+      { id: "market-research", label: "市场调研" },
     ],
   },
   // 2.1 场景建模
@@ -110,53 +109,238 @@ const PRD_MODULES = [
 // 详细内容数据
 // ============================================================
 
-// 产品概述内容
-const OVERVIEW_CONTENT = {
-  bg: {
-    title: "产品背景",
-    content: `随着 AI 技术进入工业化应用阶段，企业在构建自主 AI 能力时面临三大痛点：
+// 产品介绍内容
+const PRODUCT_INTRO = {
+  name: "零数数智工厂",
+  slogan: "高效数据生产与模型迭代平台，让企业 AI 能力从数据到应用持续进化。",
+  altSlogans: [
+    "让高质量数据流动起来，让 AI 模型快速进化。",
+    "从数据生产到智能体应用，一站式构建企业 AI 工厂。",
+    "打通数据、模型与应用的企业级 AI 生产线。",
+  ],
+  positioning: "零数数智工厂是一套面向企业 AI 建设的端到端数据与模型生产平台，覆盖业务场景定义、异构数据接入、数据湖存储、数据清洗加工、数据标注质检、数据资产管理、模型训练评测、模型推理部署、知识库构建和智能体应用开发。\n\n产品以数据平台和模型平台为双核心，通过 Kafka、MinIO、Apache Iceberg、Apache Spark、Label Studio、MLflow、Ollama、Dify 等技术组件，构建可追溯、可治理、可扩展、可交付的企业级 AI 生产工作台。",
+  audiences: [
+    { group: "企业 AI 团队", need: "需要统一管理数据、模型、知识库和智能体应用的完整生产流程" },
+    { group: "数据工程师", need: "需要高效接入多源异构数据，并完成清洗、入湖、质量治理和溯源" },
+    { group: "标注团队", need: "需要统一的标注任务分发、协作、质检和标注结果版本管理能力" },
+    { group: "算法工程师", need: "需要规范化管理训练实验、模型评测、版本注册和模型部署" },
+    { group: "产品与运营人员", need: "需要低门槛构建知识库、Prompt 模板和智能体应用" },
+    { group: "平台管理员", need: "需要统一管理用户权限、资源、告警、审计、安全和系统运行状态" },
+    { group: "交付与解决方案团队", need: "需要标准化平台能力支撑客户项目演示、部署、验收和扩展" },
+  ],
+  highlights: [
+    { title: "端到端 AI 生产闭环", desc: "平台打通「场景定义、数据接入、数据处理、标注质检、数据集发布、模型训练、模型评测、推理部署、智能体应用」的完整链路，减少企业在多个工具之间反复切换的成本。", icon: Workflow, color: "#3b82f6" },
+    { title: "多源异构数据统一接入", desc: "支持数据库、文件、对象存储、消息队列、API、RTSP 视频流、公开数据源等多种数据来源，适配结构化、半结构化和非结构化数据。", icon: Database, color: "#10b981" },
+    { title: "数据湖与版本化资产管理", desc: "基于 MinIO 和 Apache Iceberg 构建数据湖能力，支持对象存储、湖表管理、ACID 事务、快照版本、Schema 演进和时间旅行，为数据资产沉淀提供可靠底座。", icon: Layers, color: "#8b5cf6" },
+    { title: "流批一体数据加工", desc: "基于 Apache Spark 支持实时和离线数据清洗、质量评估、数据增强、特征工程和入湖处理，提升数据生产效率和质量可控性。", icon: Settings, color: "#f59e0b" },
+    { title: "专业标注能力集成", desc: "集成 Label Studio，支持图像、文本、音频、视频、点云、多模态以及 SFT、DPO、RLHF、CoT 等多类型标注任务，支持团队协作、版本同步和质检闭环。", icon: Tag, color: "#ef4444" },
+    { title: "模型实验与评测标准化", desc: "集成 MLflow，支持实验追踪、参数管理、指标对比、模型注册和版本管理，让模型训练和评测过程可复现、可比较、可追溯。", icon: BarChart3, color: "#06b6d4" },
+    { title: "本地模型推理与智能体应用", desc: "通过 Ollama 支持本地大模型部署和轻量推理服务，通过 Dify 支持 RAG 知识库、Prompt 调试、可视化工作流和智能体应用构建。", icon: Brain, color: "#6366f1" },
+    { title: "企业级治理与可观测性", desc: "提供 RBAC 权限、数据范围控制、操作审计、任务监控、组件健康检查、告警中心、质量门禁和资源监控，满足企业级管理和交付要求。", icon: Shield, color: "#14b8a6" },
+  ],
+  mainFunctions: [
+    { title: "任务建模中心", items: ["业务场景管理", "标签体系管理", "建模任务管理", "任务进度、数据集、标注、模型实验关联查看"] },
+    { title: "数据接入中心", items: ["9 类异构数据源接入", "数据源连接测试", "批量采集和流式采集", "调度策略、失败重试、限速和并发控制", "任务进度、日志、异常、告警和重试管理"] },
+    { title: "数据平台", items: ["Kafka 消息缓存、预清洗、校验、去重和事件分发", "MinIO 对象存储", "Apache Iceberg 数据湖表、快照、版本和 Schema 演进", "Apache Spark 流批清洗、质量评估、数据增强和特征工程"] },
+    { title: "数据标注中心", items: ["多类型标注模板", "标注任务创建和分发", "标注工作台", "团队协作与进度管理", "Kappa 一致性评估", "标注结果同步、导出和版本管理"] },
+    { title: "数据资产管理", items: ["数据集管理", "数据集版本控制", "训练集、验证集、测试集划分", "数据质量报告", "数据质量门禁", "数据全链路溯源"] },
+    { title: "模型生产中心", items: ["模型仓库", "模型训练任务", "MLflow 实验追踪", "模型评测和报告生成", "模型版本注册", "模型部署门禁"] },
+    { title: "模型推理服务", items: ["Ollama 本地模型部署", "多模型管理", "在线推理测试", "API Key 管理", "调用量、延迟、错误率和限流监控"] },
+    { title: "知识库与智能体应用", items: ["知识库创建和文档解析", "向量化和检索测试", "Prompt 模板管理", "RAG 应用构建", "智能体可视化工作流编排", "应用发布、调试和运行日志"] },
+    { title: "平台管理与运营监测", items: ["用户、角色、部门、菜单和权限管理", "系统参数和通知管理", "操作日志和审计追踪", "首页运营看板", "告警中心", "算力和组件健康监控"] },
+  ],
+  painPoints: [
+    { pain: "数据来源分散，接入成本高", solution: "提供统一数据源管理和多源异构数据接入流程" },
+    { pain: "数据清洗、标注、训练链路割裂", solution: "打通数据生产到模型训练的端到端流程" },
+    { pain: "数据质量不可控", solution: "提供预清洗、质量规则、质量报告和质量门禁" },
+    { pain: "标注任务协作效率低", solution: "集成专业标注工具，统一管理任务分发、质检和版本同步" },
+    { pain: "模型训练过程不可复现", solution: "通过 MLflow 记录参数、指标、日志和模型产物" },
+    { pain: "模型部署与应用构建门槛高", solution: "支持 Ollama 本地推理和 Dify 智能体应用构建" },
+    { pain: "数据、模型、应用缺少统一治理", solution: "建立统一资产目录、权限体系、审计日志和溯源链路" },
+    { pain: "平台运行缺少监控", solution: "提供任务、数据、模型、组件和资源的统一监控告警" },
+  ],
+  valueBenefits: [
+    { audience: "对业务", benefits: ["缩短 AI 项目从数据准备到应用上线的整体周期", "沉淀高质量数据资产、模型资产和知识资产", "支持企业 AI 能力从单点试验走向规模化生产"] },
+    { audience: "对数据团队", benefits: ["降低多源数据接入和清洗成本", "提升数据质量可控性和可追溯性", "减少重复的数据处理和人工核查工作"] },
+    { audience: "对算法团队", benefits: ["提升训练实验管理效率", "支持模型指标横向对比和版本追踪", "提高模型发布前评测和回归验证的规范性"] },
+    { audience: "对应用团队", benefits: ["降低知识库、Prompt 和智能体应用构建门槛", "支持快速搭建 RAG 问答、智能客服、业务助手等 AI 应用", "提供从模型调用到应用反馈的运行观测能力"] },
+    { audience: "对管理者", benefits: ["统一掌握数据资产、模型资产、任务执行和平台健康状态", "通过权限、审计、质量门禁和告警机制降低运营风险", "支撑客户项目标准化交付和持续运营"] },
+  ],
+  serviceModes: [
+    { title: "私有化部署", desc: "适合对数据安全、模型资产和内网运行有要求的企业客户。平台部署在客户自有服务器、私有云或专有云环境中，数据不出域，支持本地模型部署和内部系统集成。" },
+    { title: "本地演示与试点交付", desc: "适合售前验证、POC、试点项目和小规模团队使用。可按最小闭环部署核心模块，优先验证数据接入、标注、数据集、模型训练和知识库应用流程。" },
+    { title: "混合云集成", desc: "适合同时使用本地数据和云端模型、云端存储或第三方 API 的客户。平台可通过统一凭据、API 适配器和权限控制接入外部能力。" },
+    { title: "定制化项目交付", desc: "适合行业场景明确、流程复杂或需对接现有系统的客户。可围绕数据源适配、标注模板、质量规则、模型训练脚本、业务知识库和智能体应用进行定制开发。" },
+  ],
+  summary: "零数数智工厂是一套面向企业 AI 工程化落地的端到端生产平台，通过统一的数据平台、模型平台和智能体开发能力，帮助企业把分散的数据、模型和应用流程组织成可管理、可追踪、可复用、可持续迭代的 AI 生产体系。",
+};
 
-**1. 数据生产成本极高**
-高质量训练数据的采集、清洗、标注工作繁琐，缺乏系统化工具支撑，人力成本高、质量不可控。
-
-**2. 模型生产流程割裂**
-模型训练、评估、测试、部署分散在不同系统，版本管理混乱，迭代周期长。
-
-**3. AI 应用落地困难**
-知识库构建、Prompt 管理、智能体编排缺乏统一平台，团队协作和应用运营没有系统支撑。`,
-  },
-  value: {
-    title: "核心价值主张",
-    points: [
-      { icon: Sparkles, label: "一站式", desc: "从数据采集到模型部署，全链路无需跨系统操作" },
-      { icon: Shield, label: "可信赖", desc: "数据溯源 + 质量门禁 + 双盲仲裁保障数据和模型质量" },
-      { icon: TrendingUp, label: "高效率", desc: "AI 智能预标注、自动增强、主动学习，综合降低人工标注与处理成本" },
-      { icon: Activity, label: "可追溯", desc: "全链路数据血缘追踪，操作日志完整审计" },
-    ],
-  },
-  users: {
-    title: "目标用户角色",
-    roles: [
-      { role: "数据工程师", desc: "数据采集、清洗、增强、标注全流程操作", color: "#3b82f6" },
-      { role: "AI 算法工程师", desc: "模型训练、评估、测试、性能优化", color: "#8b5cf6" },
-      { role: "标注团队负责人", desc: "标注任务分配、质检管理、进度追踪", color: "#10b981" },
-      { role: "项目经理", desc: "项目整体把控、进度协调、质量验收", color: "#f59e0b" },
-      { role: "平台管理员", desc: "系统配置、权限管理、资源监控", color: "#ef4444" },
-    ],
-  },
-  terms: {
-    title: "术语定义",
-    terms: [
-      { term: "场景 (Scene)", definition: "按业务领域划分的AI应用单元，如「交通事件识别」「电力巡检」" },
-      { term: "标签体系 (Label Schema)", definition: "场景下多层级分类标签定义，如「目标类别→车辆/行人/标识」" },
-      { term: "任务 (Task)", definition: "从场景衍生的具体AI模型生产任务，含数据规格、质量要求、评测指标" },
-      { term: "数据集 (Dataset)", definition: "特定用途数据集合，含版本管理、分支协作、权限控制" },
-      { term: "质量门禁 (Quality Gate)", definition: "数据流转各环节的质量检验关卡，如清洗质量→数量达标→标注一致性" },
-      { term: "SFT", definition: "Supervised Fine-Tuning，监督微调，用于生成高质量指令-响应训练样本" },
-      { term: "DPO", definition: "Direct Preference Optimization，直接偏好优化，用于构建偏好对训练数据" },
-      { term: "Kappa 系数", definition: "衡量标注员间一致性的统计指标，≥0.8 为优秀" },
-    ],
-  },
+// 市场调研内容
+const MARKET_RESEARCH_CONTENT = {
+  perspectives: [
+    {
+      key: "national",
+      label: "国家视角",
+      icon: Shield,
+      color: "#3b82f6",
+      summary: "数据是人工智能与数字经济的核心生产要素，但「数据怎么高效生产」与「数据怎么安全跨域打通」始终是制约数据要素价值释放的两大瓶颈",
+      sections: [
+        {
+          id: "1.1",
+          title: "多模态非结构化数据语义规则：从「可读」到「可理解」",
+          pain: "非结构化数据占全球数据总量80%以上，语义规则缺失导致价值难以释放。GB/T 32909-2016已发布近十年，面对大模型多模态需求覆盖深度不足。",
+          progress: "TC609四项标准（2025年8月）构建「建设-格式-分类-评测」闭环；ISO/IEC 5259-1:2024实现「以数据使用为中心」范式变革；中国已启动采标。",
+          trends: [
+            "从单一模态规范→跨模态协同标注规范",
+            "从人工标注→半自动化+AI辅助标注规范",
+            "从文件级分类→实例级细粒度语义标注",
+          ],
+        },
+        {
+          id: "1.2",
+          title: "高质量数据集全生命周期标准化：从「可信」到「可评」",
+          pain: "知识数据三重痛点：表达不规范、结构不统一、质量评价缺失。现有标准多聚焦「建什么」，缺少「建得好不好」的量化评测体系。",
+          progress: "TC609构建六步法全流程；信通院指引提出「规划-建设-交付-运维-运营」完整体系，强调「思维链（CoT）数据」作为高阶知识形态。",
+          trends: [
+            "从劳动密集型→知识密集型转型",
+            "从静态评价→动态质量监测演进",
+          ],
+        },
+        {
+          id: "1.3",
+          title: "多源异构数据本体模型标准化：从「可用」到「可复用」",
+          pain: "多源异构数据融合面临「结构不统一、语义不一致、融合效率低」三大痛点。AI场景下语义歧义直接导致推理幻觉。",
+          progress: "GB/T 42131-2022构建知识图谱技术框架；W3C OKI社区组（2025年10月）提出「对齐的本体网络」路径；清华大学CIMO本体验证工程可行性。",
+          trends: [
+            "从单一本体→对齐的本体网络",
+            "从人工构建→AI辅助构建",
+            "从技术标准→应用标准延伸",
+          ],
+        },
+        {
+          id: "1.4",
+          title: "智能化数据工厂标准化：从「手工作坊」到「工业流水线」",
+          pain: "数据标注产业年均复合增长率超20%，但仍面临专业化程度不足、标准缺失等挑战。数据生产链条长、环节间缺乏统一接口、质量评估体系不健全。",
+          progress: "工信部启动「工业数据筑基行动」（1+4+N框架）；国家发改委等部门提出建立数据标注标准体系框架；微软Factory Namespace Manager验证AI驱动标准化可行性。",
+          trends: [
+            "场景驱动、分行业推进策略",
+            "标准聚焦「接口规范」和「质量底线」",
+            "先在钢铁、汽车等数据基础好的行业形成示范",
+          ],
+        },
+      ],
+      keyFindings: [
+        "TC609四项标准首次实现多模态数据统一封装与实例级语义标注",
+        "ISO/IEC 5259-1:2024从「以数据生产为中心」→「以数据使用为中心」范式变革",
+        "GB/T 32909-2016已近十年，面对大模型多模态需求覆盖深度不足",
+        "W3C OKI社区组提出「对齐的本体网络」路径，代表多本体互操作范式",
+        "信通院提出「思维链数据」作为高阶知识形态，质量评价深入推理过程",
+      ],
+    },
+    {
+      key: "player",
+      label: "玩家视角",
+      icon: TrendingUp,
+      color: "#8b5cf6",
+      summary: "Data&AI数据基础设施——AI时代的「核心数字底座」，数据平台从「被动容器」升级为「主动生产力载体」",
+      trackDefinition: {
+        desc: "为支撑人工智能规模化落地而构建的一体化基础软件平台，通过AI原生架构重构数据处理范式，融合数据工程与AI工程。其本质是传统大数据平台的升级形态。",
+        evolution: [
+          { stage: "第一阶段", ai: "感知智能", data: "分散的非结构化数据", infra: "数据库/数据仓库" },
+          { stage: "第二阶段", ai: "生成式AI", data: "结构化+单/多模态混合", infra: "数据平台/云数据仓库" },
+          { stage: "第三阶段", ai: "Agentic AI", data: "融合的多模态数据", infra: "Data&AI数据基础设施" },
+        ],
+        diff: [
+          { dim: "数据类型", old: "以结构化为主", new: "原生支持多模态" },
+          { dim: "实时性", old: "批量处理为主，延迟高", new: "并行处理+实时动态处理" },
+          { dim: "AI集成", old: "需外接ML平台", new: "Data&AI一体化" },
+          { dim: "工具链", old: "缺乏AutoML/大模型运营", new: "支持训推一体/智能体生态" },
+          { dim: "治理模式", old: "规则引擎+人工标注", new: "AI驱动自动化，智能标注" },
+        ],
+      },
+      capabilities: [
+        { name: "融合开发能力", desc: "多源多模态数据集成与AI工程化", subs: "数据集成、数据开发、模型训推、智能数据治理、Agent开发" },
+        { name: "平台架构能力", desc: "湖仓一体、AI原生新型架构", subs: "Unity Catalog/Format/Processing、存算分离、Data Fabric" },
+        { name: "资源调度能力", desc: "CPU/GPU异构计算调度效率与成本控制", subs: "存算分离弹性扩展、资源隔离与稳定性" },
+        { name: "智能原生能力", desc: "数据与AI的闭环互动深度与广度", subs: "AI-in-Lakehouse、低代码/自动化、智能体生态支持" },
+        { name: "安全运营能力", desc: "高可用性、安全合规性与运维效率", subs: "数据隐私合规、加密审计、容灾高可用、TCO/ROI优化" },
+      ],
+      players: [
+        {
+          type: "智能应用厂商",
+          tag: "场景快速落地",
+          reps: "爱数、数新智能、数势、Dify等",
+          features: ["围绕数据/AI场景做定制化服务和工具", "无体系化数据基础设施技术产品积累", "智能原生能力相对较强"],
+          positioning: "聚集细分领域的专业类厂商",
+          radar: "智能原生 > 融合开发 > 资源调度 > 平台架构 ≈ 安全运营",
+        },
+        {
+          type: "数据平台厂商",
+          tag: "大数据平台转型期",
+          reps: "Snowflake、星环、明略科技、东方金信等",
+          features: ["有较多大数据平台项目和客户积累", "处于融合AI能力的转型期，尚未形成Data&AI一体化产品", "缺少基础设施一体化建设的实施经验和案例"],
+          positioning: "探索期",
+          radar: "融合开发 ≈ 资源调度 > 平台架构 > 安全运营 > 智能原生",
+        },
+        {
+          type: "专业平台厂商",
+          tag: "先发优势 ⭐",
+          reps: "Databricks（国际）、科杰科技（国内）",
+          features: ["率先实现面向AI原生的Data&AI一体化基础设施软件成熟产品", "多个行业标杆案例，形成成熟方法论", "AI时代Data&AI一体化基础设施赛道取得先发优势"],
+          positioning: "先发优势持续扩大",
+          radar: "融合开发 ≈ 智能原生 > 平台架构 > 安全运营 > 资源调度",
+          highlight: true,
+        },
+        {
+          type: "综合平台厂商",
+          tag: "品牌强但架构割裂",
+          reps: "阿里云、华为、腾讯",
+          features: ["丰富的产品线整合，品牌力强", "基于自研+收购构建端到端全栈能力", "核心短板：各模组分属不同团队，架构仍然割裂"],
+          positioning: "品牌优势，但落地服务依赖三方",
+          radar: "资源调度最强，各维度相对均衡",
+        },
+      ],
+      scenarios: [
+        {
+          name: "大型国央企",
+          pain: "数据孤岛严重、安全合规要求最严、数据统计时效性差",
+          case: "中国石化 × 科杰科技：围绕勘探9大核心业务，构建统一数据资源目录，支撑61套业务系统用数服务",
+          tag: "破解数据孤岛与安全合规",
+        },
+        {
+          name: "大型金融企业",
+          pain: "实时性不足、数据标准不统一、数字化能力难以规模化",
+          case: "中信银行 × 科杰科技：构建「离线+实时+AI」三位一体数据底座，信贷审批响应时间压缩至分钟级",
+          tag: "释放多模态数据价值",
+        },
+        {
+          name: "跨国外企",
+          pain: "多云/混合云异构数据源整合困难、全球统一治理vs各国数据主权合规",
+          case: "亚洲头部零售集团 × 科杰科技：整合十大主题域近5年300+表100亿+条数据，核心报表响应速度提升10倍",
+          tag: "本地化与国际化统一",
+        },
+        {
+          name: "城市政府",
+          pain: "行业标准缺失、中小企业AI技术门槛高、公共数据开放服务能力不足",
+          case: "某市数据集团 × 科杰科技：构建「数联网+区块链+隐私保护计算+可信数据空间」全流程城市数据流通平台",
+          tag: "打通数字化产业生态",
+        },
+      ],
+      trends: [
+        { title: "Data&AI一体化成不可逆的行业共识", desc: "全球领先厂商不约而同向Data&AI融合方向聚合，加速数据标注、治理等传统环节向AI原生的「智能数据工厂」演进" },
+        { title: "Agentic AI提出「实时+多模态」双重要求", desc: "Gartner预测2028年至少15%日常工作决策由Agentic AI自主做出，数据生产质量将成为AI竞争力决定性变量" },
+        { title: "专业平台厂商先发优势持续扩大", desc: "技术成熟+方法论沉淀+标杆案例的复合护城河，综合平台厂商因架构割裂存在结构性短板" },
+        { title: "价值评估向「点-线-面-体」体系演进", desc: "五级价值评估模型与国家数据要素市场化政策框架高度契合，商业叙事需要从「技术能力」向「价值链条」升维" },
+      ],
+      strategicInsights: [
+        { dim: "产品定位", current: "数智工厂（数据生产+模型生产）", benchmark: "智能应用厂商→专业平台厂商路径", suggestion: "明确Data&AI融合的产品战略叙事，避免停留在工具层" },
+        { dim: "核心能力", current: "数据标注+模型训练全链路", benchmark: "与专业平台厂商融合开发能力对齐", suggestion: "重点投入AI辅助标注、智能质检、数据飞轮闭环" },
+        { dim: "目标客群", current: "待明确", benchmark: "大型国央企、金融机构优先", suggestion: "以国央企勘探/制造场景为切入点，积累标杆案例" },
+        { dim: "竞争壁垒", current: "行业数据积累+领域知识", benchmark: "方法论沉淀是关键", suggestion: "系统整理落地案例，形成可复制的行业解决方案" },
+        { dim: "叙事升维", current: "功能层叙事", benchmark: "构建完整价值主张", suggestion: "构建「数据生产效率→模型质量提升→业务智能化→行业协同」的完整价值主张" },
+      ],
+    },
+  ],
 };
 
 // 场景建模内容
@@ -292,10 +476,10 @@ const DATA_PRODUCTION_CONTENT = {
     title: "数据清洗",
     desc: "提供多类型数据清洗算子，自动化处理数据质量问题。",
     operators: {
-      文本: ["去重", "空值填充", "格式标准化", "异常字符过滤", "长度截断", "乱码修复", "敏感信息脱敏", "HTML标签清除"],
-      图像: ["去重", "模糊过滤", "分辨率过滤", "亮度/对比度过滤", "格式转换", "尺寸归一化", "水印去除"],
-      视频: ["去重", "时长过滤", "画质过滤", "关键帧提取", "音视频分离", "格式转换"],
-      音频: ["去重", "时长过滤", "采样率转换", "噪声过滤", "静音检测", "格式转换"],
+      "文本": ["去重", "空值填充", "格式标准化", "异常字符过滤", "长度截断", "乱码修复", "敏感信息脱敏", "HTML标签清除"],
+      "图像": ["去重", "模糊过滤", "分辨率过滤", "亮度/对比度过滤", "格式转换", "尺寸归一化", "水印去除"],
+      "视频": ["去重", "时长过滤", "画质过滤", "关键帧提取", "音视频分离", "格式转换"],
+      "音频": ["去重", "时长过滤", "采样率转换", "噪声过滤", "静音检测", "格式转换"],
     },
     features: [
       { name: "算子组合", detail: "可视化拖拽配置清洗算子流水线", priority: "P0" as const },
@@ -663,8 +847,9 @@ function TableRow({ cells, isHeader = false }: { cells: string[]; isHeader?: boo
 // ============================================================
 export default function PRDPage() {
   const [activeModule, setActiveModule] = useState("overview");
-  const [activeSection, setActiveSection] = useState("bg");
+  const [activeSection, setActiveSection] = useState("intro");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [mrPerspective, setMrPerspective] = useState("national");
 
   const currentModule = PRD_MODULES.find(m => m.key === activeModule)!;
 
@@ -753,99 +938,484 @@ export default function PRDPage() {
           {/* ==================== 产品概述 ==================== */}
           {activeModule === "overview" && (
             <>
-              {/* 产品背景 */}
-              {activeSection === "bg" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  <SectionTitle title={OVERVIEW_CONTENT.bg.title} color={currentModule.color} />
-                  <div style={{ whiteSpace: "pre-wrap", fontSize: 14, color: "#475569", lineHeight: 1.8, padding: "0 4px" }}>
-                    {OVERVIEW_CONTENT.bg.content}
+              {/* 产品介绍 */}
+              {activeSection === "intro" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                  {/* 产品名称 & Slogan */}
+                  <div style={{ padding: "28px 32px", background: "linear-gradient(135deg, #3b82f608 0%, #fff 100%)", border: "1px solid #3b82f620", borderRadius: 14 }}>
+                    <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1e293b", marginBottom: 8 }}>
+                      {PRODUCT_INTRO.name}
+                    </h2>
+                    <p style={{ fontSize: 16, color: "#3b82f6", fontWeight: 600, lineHeight: 1.6, marginBottom: 12 }}>
+                      {PRODUCT_INTRO.slogan}
+                    </p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {PRODUCT_INTRO.altSlogans.map((s, i) => (
+                        <span key={i} style={{ fontSize: 11, color: "#64748b", padding: "4px 10px", background: "#f1f5f9", borderRadius: 4, border: "1px solid #e2e8f0" }}>
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 产品定位 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Target size={18} style={{ color: "#3b82f6" }} /> 产品定位
+                    </h3>
+                    <div style={{ whiteSpace: "pre-wrap", fontSize: 14, color: "#475569", lineHeight: 1.8, padding: "18px 22px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+                      {PRODUCT_INTRO.positioning}
+                    </div>
+                  </div>
+
+                  {/* 面向人群 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Users size={18} style={{ color: "#3b82f6" }} /> 面向人群
+                    </h3>
+                    <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 2fr", gap: 0, padding: "10px 18px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                        <div>用户群体</div><div>核心诉求</div>
+                      </div>
+                      {PRODUCT_INTRO.audiences.map((a, i) => (
+                        <div key={i} style={{ display: "grid", gridTemplateColumns: "1.5fr 2fr", gap: 0, padding: "12px 18px", borderBottom: i < PRODUCT_INTRO.audiences.length - 1 ? "1px solid #f1f5f9" : "none", fontSize: 13 }}>
+                          <div style={{ fontWeight: 500, color: "#1e293b" }}>{a.group}</div>
+                          <div style={{ color: "#64748b" }}>{a.need}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 核心亮点 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Sparkles size={18} style={{ color: "#3b82f6" }} /> 核心亮点
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                      {PRODUCT_INTRO.highlights.map((h, i) => {
+                        const Icon = h.icon;
+                        return (
+                          <div key={i} style={{ padding: "20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, borderLeft: `4px solid ${h.color}` }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, background: `${h.color}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Icon size={18} style={{ color: h.color }} />
+                              </div>
+                              <span style={{ fontSize: 15, fontWeight: 600, color: "#1e293b" }}>{h.title}</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>{h.desc}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 主要功能 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Cpu size={18} style={{ color: "#3b82f6" }} /> 主要功能
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                      {PRODUCT_INTRO.mainFunctions.map((f, i) => (
+                        <div key={i} style={{ padding: "18px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 10 }}>{f.title}</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {f.items.map((item, j) => (
+                              <div key={j} style={{ fontSize: 12, color: "#64748b", paddingLeft: 10, position: "relative" }}>
+                                <span style={{ position: "absolute", left: 0, color: "#3b82f6" }}>·</span>
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 解决痛点 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <TrendingUp size={18} style={{ color: "#3b82f6" }} /> 解决痛点
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                      {PRODUCT_INTRO.painPoints.map((p, i) => (
+                        <div key={i} style={{ padding: "16px 20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#ef4444", marginBottom: 6 }}>❌ {p.pain}</div>
+                          <div style={{ fontSize: 12, color: "#10b981" }}>✅ {p.solution}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 价值收益 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Activity size={18} style={{ color: "#3b82f6" }} /> 价值收益
+                    </h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      {PRODUCT_INTRO.valueBenefits.map((b, i) => (
+                        <div key={i} style={{ padding: "18px 22px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, borderLeft: "4px solid #3b82f6" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>{b.audience}</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {b.benefits.map((item, j) => (
+                              <div key={j} style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>• {item}</div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 服务模式 */}
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                      <Settings size={18} style={{ color: "#3b82f6" }} /> 服务模式
+                    </h3>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+                      {PRODUCT_INTRO.serviceModes.map((m, i) => (
+                        <div key={i} style={{ padding: "20px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#3b82f6", marginBottom: 8 }}>{m.title}</div>
+                          <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>{m.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 一句话总结 */}
+                  <div style={{ padding: "22px 28px", background: "linear-gradient(135deg, #3b82f610 0%, #3b82f605 100%)", border: "1.5px solid #3b82f630", borderRadius: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>一句话总结</div>
+                    <div style={{ fontSize: 15, color: "#1e293b", lineHeight: 1.7, fontWeight: 500 }}>{PRODUCT_INTRO.summary}</div>
                   </div>
                 </div>
               )}
 
-              {/* 核心价值 */}
-              {activeSection === "value" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  <SectionTitle title={OVERVIEW_CONTENT.value.title} desc="零数数智工厂的三大核心价值主张" color={currentModule.color} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-                    {OVERVIEW_CONTENT.value.points.map((point, i) => {
-                      const Icon = point.icon;
-                      return (
-                        <div key={i} style={{
-                          padding: "24px",
-                          background: "#fff",
-                          border: "1px solid #e2e8f0",
+              {/* 产品架构 */}
+              {activeSection === "architecture" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <SectionTitle title="产品架构图" desc="从数据到模型到应用的全链路数据要素价值体系" color={currentModule.color} />
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#f0f4f8" }}>
+                    <iframe
+                      src="/architecture.html"
+                      style={{ width: "100%", height: "820px", border: "none", display: "block" }}
+                      title="零数数智工厂产品架构图"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 市场调研 */}
+              {activeSection === "market-research" && (() => {
+                const activePersp = MARKET_RESEARCH_CONTENT.perspectives.find(p => p.key === mrPerspective)!;
+                const PerspIcon = activePersp.icon;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                    {/* 视角切换 */}
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {MARKET_RESEARCH_CONTENT.perspectives.map(p => {
+                        const PIcon = p.icon;
+                        return (
+                          <button
+                            key={p.key}
+                            onClick={() => setMrPerspective(p.key)}
+                            style={{
+                              padding: "10px 22px",
+                              fontSize: 14,
+                              fontWeight: mrPerspective === p.key ? 700 : 500,
+                              color: mrPerspective === p.key ? "#fff" : "#475569",
+                              background: mrPerspective === p.key ? p.color : "#fff",
+                              border: `1.5px solid ${mrPerspective === p.key ? p.color : "#e2e8f0"}`,
+                              borderRadius: 8,
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <PIcon size={16} />
+                            {p.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* 核心论点 */}
+                    <div style={{
+                      padding: "20px 24px",
+                      background: `linear-gradient(135deg, ${activePersp.color}08 0%, #fff 100%)`,
+                      border: `1px solid ${activePersp.color}20`,
+                      borderRadius: 12,
+                      borderLeft: `4px solid ${activePersp.color}`,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        核心论点
+                      </div>
+                      <div style={{ fontSize: 15, color: "#1e293b", lineHeight: 1.8, fontWeight: 500 }}>
+                        {activePersp.summary}
+                      </div>
+                    </div>
+
+                    {/* ========== 国家视角内容 ========== */}
+                    {mrPerspective === "national" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                        {activePersp.sections!.map((sec: any, i: number) => (
+                          <div key={i} style={{
+                            padding: "22px 26px",
+                            background: "#fff",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 12,
+                          }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                width: 26, height: 26, borderRadius: 6,
+                                background: `${activePersp.color}12`, fontSize: 11, fontWeight: 700, color: activePersp.color,
+                              }}>
+                                {sec.id}
+                              </span>
+                              {sec.title}
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                              <div style={{ padding: "14px 16px", background: "#fef2f2", borderRadius: 8, border: "1px solid #fecaca" }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", marginBottom: 6 }}>痛点与现状</div>
+                                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>{sec.pain}</div>
+                              </div>
+                              <div style={{ padding: "14px 16px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", marginBottom: 6 }}>进展与突破</div>
+                                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>{sec.progress}</div>
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#3b82f6", marginBottom: 8 }}>发展趋势</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {sec.trends.map((t: string, j: number) => (
+                                  <div key={j} style={{ fontSize: 12, color: "#475569", paddingLeft: 14, position: "relative" }}>
+                                    <span style={{ position: "absolute", left: 0, color: "#3b82f6" }}>→</span>
+                                    {t}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* 关键发现 */}
+                        <div style={{
+                          padding: "22px 26px",
+                          background: "linear-gradient(135deg, #3b82f608 0%, #fff 100%)",
+                          border: "1.5px solid #3b82f620",
                           borderRadius: 12,
                         }}>
-                          <div style={{
-                            width: 48, height: 48, borderRadius: 12,
-                            background: `${currentModule.color}10`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            marginBottom: 16,
-                          }}>
-                            <Icon size={24} style={{ color: currentModule.color }} />
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Sparkles size={16} style={{ color: "#3b82f6" }} /> 关键发现
                           </div>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>
-                            {point.label}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {activePersp.keyFindings!.map((f: string, i: number) => (
+                              <div key={i} style={{ display: "flex", gap: 10, fontSize: 13, color: "#475569", lineHeight: 1.7 }}>
+                                <span style={{
+                                  flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                                  background: "#3b82f612", display: "flex", alignItems: "center", justifyContent: "center",
+                                  fontSize: 11, fontWeight: 700, color: "#3b82f6",
+                                }}>
+                                  {i + 1}
+                                </span>
+                                {f}
+                              </div>
+                            ))}
                           </div>
-                          <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-                            {point.desc}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 目标用户 */}
-              {activeSection === "users" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  <SectionTitle title={OVERVIEW_CONTENT.users.title} color={currentModule.color} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-                    {OVERVIEW_CONTENT.users.roles.map((r, i) => (
-                      <div key={i} style={{
-                        padding: "18px 20px",
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 10,
-                        borderLeft: `4px solid ${r.color}`,
-                      }}>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>
-                          {r.role}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>
-                          {r.desc}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    )}
 
-              {/* 术语定义 */}
-              {activeSection === "terms" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                  <SectionTitle title={OVERVIEW_CONTENT.terms.title} color={currentModule.color} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {OVERVIEW_CONTENT.terms.terms.map((t, i) => (
-                      <div key={i} style={{
-                        padding: "14px 18px",
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 8,
-                      }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: currentModule.color, marginBottom: 4 }}>
-                          {t.term}
+                    {/* ========== 玩家视角内容 ========== */}
+                    {mrPerspective === "player" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+
+                        {/* 赛道定义 */}
+                        <div style={{ padding: "24px 28px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Target size={18} style={{ color: activePersp.color }} /> 赛道定义
+                          </h3>
+                          <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.8, marginBottom: 20 }}>
+                            {activePersp.trackDefinition!.desc}
+                          </p>
+
+                          {/* 三阶段演进 */}
+                          <h4 style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10 }}>范式演进</h4>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+                            {activePersp.trackDefinition!.evolution.map((e: any, i: number) => (
+                              <div key={i} style={{
+                                padding: "16px",
+                                background: i === 2 ? `${activePersp.color}08` : "#f8fafc",
+                                border: i === 2 ? `1.5px solid ${activePersp.color}40` : "1px solid #e2e8f0",
+                                borderRadius: 10,
+                              }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: i === 2 ? activePersp.color : "#94a3b8", marginBottom: 8 }}>{e.stage}</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ fontSize: 12 }}><span style={{ color: "#64748b" }}>AI：</span><span style={{ color: "#1e293b", fontWeight: 500 }}>{e.ai}</span></div>
+                                  <div style={{ fontSize: 12 }}><span style={{ color: "#64748b" }}>数据：</span><span style={{ color: "#1e293b", fontWeight: 500 }}>{e.data}</span></div>
+                                  <div style={{ fontSize: 12 }}><span style={{ color: "#64748b" }}>设施：</span><span style={{ color: "#1e293b", fontWeight: 500 }}>{e.infra}</span></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* 五维对比表 */}
+                          <h4 style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10 }}>与传统大数据平台对比</h4>
+                          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.5fr 1.8fr", gap: 0, padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600, color: "#64748b" }}>
+                              <div>对比维度</div><div>传统大数据平台</div><div>Data&AI数据基础设施</div>
+                            </div>
+                            {activePersp.trackDefinition!.diff.map((d: any, i: number) => (
+                              <div key={i} style={{ display: "grid", gridTemplateColumns: "1.2fr 1.5fr 1.8fr", gap: 0, padding: "12px 16px", borderBottom: i < activePersp.trackDefinition!.diff.length - 1 ? "1px solid #f1f5f9" : "none", fontSize: 13 }}>
+                                <div style={{ fontWeight: 600, color: "#1e293b" }}>{d.dim}</div>
+                                <div style={{ color: "#94a3b8" }}>{d.old}</div>
+                                <div style={{ color: activePersp.color, fontWeight: 500 }}>{d.new}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 13, color: "#475569" }}>
-                          {t.definition}
+
+                        {/* 五大关键能力 */}
+                        <div style={{ padding: "24px 28px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Cpu size={18} style={{ color: activePersp.color }} /> 五大关键能力模型
+                          </h3>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(1, 1fr)", gap: 12 }}>
+                            {activePersp.capabilities!.map((c: any, i: number) => (
+                              <div key={i} style={{
+                                padding: "16px 20px",
+                                background: "#f8fafc",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: 10,
+                                borderLeft: `4px solid ${activePersp.color}`,
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{c.name}</span>
+                                  <span style={{ fontSize: 12, color: "#64748b" }}>— {c.desc}</span>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#94a3b8", paddingLeft: 4 }}>{c.subs}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 四类玩家格局 */}
+                        <div style={{ padding: "24px 28px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Users size={18} style={{ color: activePersp.color }} /> 厂商格局：四类玩家
+                          </h3>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+                            {activePersp.players!.map((p: any, i: number) => (
+                              <div key={i} style={{
+                                padding: "20px",
+                                background: p.highlight ? `${activePersp.color}06` : "#f8fafc",
+                                border: p.highlight ? `1.5px solid ${activePersp.color}40` : "1px solid #e2e8f0",
+                                borderRadius: 10,
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{p.type}</div>
+                                  <span style={{
+                                    fontSize: 10, fontWeight: 700,
+                                    padding: "3px 8px",
+                                    background: p.highlight ? `${activePersp.color}15` : "#f1f5f9",
+                                    color: p.highlight ? activePersp.color : "#64748b",
+                                    borderRadius: 4,
+                                  }}>
+                                    {p.tag}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8 }}>代表：{p.reps}</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+                                  {p.features.map((f: string, j: number) => (
+                                    <div key={j} style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>• {f}</div>
+                                  ))}
+                                </div>
+                                <div style={{ fontSize: 11, color: "#94a3b8", padding: "8px 10px", background: "#fff", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                                  能力雷达：{p.radar}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 典型应用场景 */}
+                        <div style={{ padding: "24px 28px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Layers size={18} style={{ color: activePersp.color }} /> 典型应用场景
+                          </h3>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+                            {activePersp.scenarios!.map((s: any, i: number) => (
+                              <div key={i} style={{
+                                padding: "18px 22px",
+                                background: "#f8fafc",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: 10,
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                  <span style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{s.name}</span>
+                                  <span style={{ fontSize: 10, padding: "2px 6px", background: `${activePersp.color}12`, color: activePersp.color, borderRadius: 4, fontWeight: 600 }}>{s.tag}</span>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#ef4444", marginBottom: 8 }}>痛点：{s.pain}</div>
+                                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6, padding: "10px 12px", background: "#fff", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                                  {s.case}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 行业趋势 */}
+                        <div style={{ padding: "24px 28px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12 }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                            <TrendingUp size={18} style={{ color: activePersp.color }} /> 行业趋势研判
+                          </h3>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {activePersp.trends!.map((t: any, i: number) => (
+                              <div key={i} style={{
+                                padding: "16px 20px",
+                                background: "#f8fafc",
+                                border: "1px solid #e2e8f0",
+                                borderRadius: 10,
+                                borderLeft: `4px solid ${activePersp.color}`,
+                              }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>
+                                  趋势{i + 1}：{t.title}
+                                </div>
+                                <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>{t.desc}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 零数战略启示 */}
+                        <div style={{
+                          padding: "24px 28px",
+                          background: `linear-gradient(135deg, ${activePersp.color}08 0%, #fff 100%)`,
+                          border: `1.5px solid ${activePersp.color}30`,
+                          borderRadius: 12,
+                        }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                            <Sparkles size={18} style={{ color: activePersp.color }} /> 对零数的战略启示
+                          </h3>
+                          <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 1.2fr 1.8fr", gap: 0, padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, color: "#64748b" }}>
+                              <div>维度</div><div>当前状态</div><div>竞争对标</div><div>战略建议</div>
+                            </div>
+                            {activePersp.strategicInsights!.map((s: any, i: number) => (
+                              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 1.2fr 1.8fr", gap: 0, padding: "12px 14px", borderBottom: i < activePersp.strategicInsights!.length - 1 ? "1px solid #f1f5f9" : "none", fontSize: 12 }}>
+                                <div style={{ fontWeight: 600, color: activePersp.color }}>{s.dim}</div>
+                                <div style={{ color: "#64748b" }}>{s.current}</div>
+                                <div style={{ color: "#94a3b8" }}>{s.benchmark}</div>
+                                <div style={{ color: "#1e293b", fontWeight: 500 }}>{s.suggestion}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </>
           )}
 

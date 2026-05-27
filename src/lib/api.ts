@@ -92,23 +92,9 @@ api.interceptors.response.use(
       }
       // 静默登录失败，跳转登录页
       if (typeof window !== "undefined") {
-        // 检查是否是统计类或列表类接口，这些接口失败不应该触发全局登出
-        const url = error.config?.url || "";
-        const isExemptApi = 
-          url.includes("/dashboard") ||
-          url.includes("/stats") ||
-          url.includes("/annotation/jobs") ||
-          url.includes("/scenes") ||
-          url.includes("/tasks") ||
-          url.includes("/datasets") ||
-          url.includes("/data-assets") ||
-          url.includes("/data_cleaning") ||
-          url.includes("/quality");
-        if (!isExemptApi) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("user");
-          window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/login";
-        }
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/login";
       }
     }
     return Promise.reject(error);

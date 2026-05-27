@@ -9,7 +9,7 @@ import {
   Sparkles, Users, Star, FileText, CheckCircle2,
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
   Wrench, ClipboardList, Layers3, ArrowUpDown, TrendingUp,
-  History, Route, Upload
+  History, Route, Upload, Cloud, Brain
 } from "lucide-react";
 
 // ============================================================
@@ -116,6 +116,33 @@ const TOP_MENUS = [
           { label: "知识库", href: "/knowledge-base", badge: null },
           { label: "Prompt管理", href: "/prompt-management", badge: null },
           { label: "智能体管理", href: "/agent-management", badge: null },
+        ],
+      },
+    ],
+  },
+  // ── 数模服务中心 ──────────────────────────────
+  {
+    key: "service-center",
+    label: "数模服务中心",
+    icon: Cloud,
+    href: "/service-center",
+    color: "#10b981",
+    desc: "模型服务 · 数据集服务",
+    subItems: [
+      {
+        label: "模型服务",
+        desc: "发现和使用 AI 模型",
+        icon: Brain,
+        children: [
+          { label: "模型服务列表", href: "/service/models", badge: null },
+        ],
+      },
+      {
+        label: "数据集服务",
+        desc: "高质量数据集发现与使用",
+        icon: Database,
+        children: [
+          { label: "数据集服务列表", href: "/service/datasets", badge: null },
         ],
       },
     ],
@@ -296,6 +323,8 @@ export function TopNavBar() {
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
+    if (pathname.startsWith("/service") || pathname === "/service-center")
+      return "service-center";
     return null;
   };
 
@@ -488,6 +517,10 @@ export function TopNavBar() {
             </div>
           )}
 
+          {/* 版本迭代 - 已隐藏 */}
+
+
+
           {/* 需求文档 */}
           <Link href="/prd" style={{
             display: "flex", alignItems: "center", gap: 6,
@@ -499,20 +532,6 @@ export function TopNavBar() {
             <FileText size={13} style={{ color: "#16a34a" }} />
             <span style={{ fontSize: 12, fontWeight: 600, color: "#16a34a" }}>需求文档</span>
           </Link>
-
-          {/* 迭代历史 */}
-          <Link href="/version-history" style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 12px", borderRadius: 6,
-            border: "1px solid #e2e8f0",
-            background: "#eff6ff",
-            textDecoration: "none", cursor: "pointer",
-          }}>
-            <History size={13} style={{ color: "#2563eb" }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#2563eb" }}>迭代历史</span>
-          </Link>
-
-
 
           {/* 退出 */}
           <button
@@ -560,6 +579,7 @@ function menuColor(key: string | null) {
     "task-modeling": "#3b82f6",
     "data-production": "#8b5cf6",
     "model-production": "#f59e0b",
+    "service-center": "#10b981",
   };
   return key ? (map[key] || "#3b82f6") : "#3b82f6";
 }
@@ -607,6 +627,8 @@ export function Sidebar() {
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
+    if (pathname.startsWith("/service") || pathname === "/service-center")
+      return "service-center";
     return null;
   })();
 
@@ -806,6 +828,8 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
+    if (pathname.startsWith("/service") || pathname === "/service-center")
+      return "service-center";
     return null;
   })();
 
