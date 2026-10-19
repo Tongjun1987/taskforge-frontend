@@ -15,6 +15,7 @@ import {
   Link2, Merge, Gauge, ClipboardList, Settings, ArrowRight, Copy,
   TrashIcon, PauseCircle, PlayCircle, FileText, XCircle, AlertOctagon
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 // ==================== 类型定义 ====================
 interface ConvergenceTask {
@@ -863,38 +864,14 @@ export default function ConvergencePage() {
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", gap: 4 }}>
-                          <button
-                            onClick={() => handleAction("detail", task)}
-                            style={{ padding: "4px 8px", border: "none", background: "#f1f5f9", borderRadius: 6, cursor: "pointer", color: "#64748b" }}
-                            title="查看详情"
-                          >
-                            <Eye size={14} />
-                          </button>
+                          <IconBtn size="sm" tone="ghost" icon={<Eye size={14} />} label="查看详情" onClick={() => handleAction("detail", task)} />
                           {task.status === "running" && (
-                            <button
-                              onClick={() => handleAction("stop", task)}
-                              style={{ padding: "4px 8px", border: "none", background: "#fef9c3", borderRadius: 6, cursor: "pointer", color: "#ca8a04" }}
-                              title="终止"
-                            >
-                              <PauseCircle size={14} />
-                            </button>
+                            <IconBtn size="sm" tone="warn" icon={<PauseCircle size={14} />} label="终止" onClick={() => handleAction("stop", task)} />
                           )}
                           {(task.status === "stopped" || task.status === "failed") && (
-                            <button
-                              onClick={() => handleAction("restart", task)}
-                              style={{ padding: "4px 8px", border: "none", background: "#dcfce7", borderRadius: 6, cursor: "pointer", color: "#15803d" }}
-                              title="重启"
-                            >
-                              <PlayCircle size={14} />
-                            </button>
+                            <IconBtn size="sm" tone="success" icon={<PlayCircle size={14} />} label="重启" onClick={() => handleAction("restart", task)} />
                           )}
-                          <button
-                            onClick={() => handleAction("delete", task)}
-                            style={{ padding: "4px 8px", border: "none", background: "#fee2e2", borderRadius: 6, cursor: "pointer", color: "#dc2626" }}
-                            title="删除"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <IconBtn size="sm" tone="danger" icon={<Trash2 size={14} />} label="删除" onClick={() => handleAction("delete", task)} />
                         </div>
                       </td>
                     </tr>
@@ -1030,12 +1007,8 @@ export default function ConvergencePage() {
                       已使用 {rule.usage_count} 次 · 创建人: {rule.creator}
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button style={{ padding: "4px 8px", border: "1px solid #e2e8f0", background: "white", borderRadius: 6, cursor: "pointer", color: "#64748b" }} title="复制">
-                        <Copy size={14} />
-                      </button>
-                      <button style={{ padding: "4px 8px", border: "1px solid #e2e8f0", background: "white", borderRadius: 6, cursor: "pointer", color: "#64748b" }} title="编辑">
-                        <Pencil size={14} />
-                      </button>
+                      <IconBtn size="sm" tone="ghost" icon={<Copy size={14} />} label="复制规则" />
+                      <IconBtn size="sm" tone="ghost" icon={<Pencil size={14} />} label="编辑规则" />
                     </div>
                   </div>
                 </div>

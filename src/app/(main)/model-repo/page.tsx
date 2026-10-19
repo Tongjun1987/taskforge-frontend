@@ -12,6 +12,7 @@ import {
 import { MOCK_MODELS, MOCK_MODEL_FILES, DEPLOY_DEFAULTS } from "./_mock";
 import type { Model, ModelFile, DeployConfig } from "./_mock";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 // ============================================================
 // 工具函数
@@ -171,12 +172,8 @@ function ModelRegistryTab() {
                 <span style={{ fontSize: 11, color: "#94a3b8" }}>更新: {m.last_updated}</span>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setDetailModel(m)} style={{ padding: "5px 10px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}>
-                  <Eye size={11} />查看
-                </button>
-                <button onClick={() => toast.success(`开始下载 ${m.name}...`)} style={{ padding: "5px 10px", borderRadius: 5, border: "none", background: "#f59e0b", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}>
-                  <Download size={11} />下载
-                </button>
+                <IconBtn size="sm" tone="ghost" icon={<Eye size={13} />} label="查看模型详情" onClick={() => setDetailModel(m)} />
+                <IconBtn size="sm" tone="warn" icon={<Download size={13} />} label="下载模型" onClick={() => toast.success(`开始下载 ${m.name}...`)} />
               </div>
             </div>
           </div>
@@ -402,15 +399,9 @@ function ModelFileTab() {
                   <td style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", color: "#94a3b8" }}>{f.uploaded_at}</td>
                   <td style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9" }}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => toast.success(`下载 ${f.name}`)} title="下载" style={{ padding: "4px 7px", borderRadius: 4, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 2 }}>
-                        <Download size={11} color="#64748b" />
-                      </button>
-                      <button onClick={() => toast.success(`部署 ${f.name}`)} title="部署" style={{ padding: "4px 7px", borderRadius: 4, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 2 }}>
-                        <Rocket size={11} color="#f59e0b" />
-                      </button>
-                      <button onClick={() => setConfirmDelete(f.id)} title="删除" style={{ padding: "4px 7px", borderRadius: 4, border: "1px solid #fecaca", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 2 }}>
-                        <Trash2 size={11} color="#dc2626" />
-                      </button>
+                      <IconBtn size="sm" tone="ghost" icon={<Download size={13} />} label="下载" onClick={() => toast.success(`下载 ${f.name}`)} />
+                      <IconBtn size="sm" tone="warn" icon={<Rocket size={13} />} label="部署" onClick={() => toast.success(`部署 ${f.name}`)} />
+                      <IconBtn size="sm" tone="danger" icon={<Trash2 size={13} />} label="删除" onClick={() => setConfirmDelete(f.id)} />
                     </div>
                   </td>
                 </tr>

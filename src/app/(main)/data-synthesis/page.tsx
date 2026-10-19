@@ -8,6 +8,7 @@ import {
   BarChart3, ToggleLeft, ToggleRight, Bot, Wand2, Server,
   Activity, Database, Code, Link as LinkIcon, Pencil, Filter
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 type SynthesisType = "image" | "text";
 type Provider = "dalle" | "midjourney" | "stable-diffusion" | "gpt-vision" | "claude-vision" | "qwen-vl" | "llama-3" | "qwen" | "baichuan";
@@ -367,10 +368,8 @@ export default function DataSynthesisPage() {
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{task.created_at}</div>
                       <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                        <button onClick={() => setDetailTask(task)} style={{ padding: "5px 6px", borderRadius: 6, background: "#eff6ff", color: "#2563eb", border: "none", cursor: "pointer" }} title="查看详情">
-                          <Eye size={14} />
-                        </button>
-                        <button style={{ padding: "5px 6px", borderRadius: 6, background: "#f1f5f9", color: "#64748b", border: "none", cursor: "pointer" }} title="删除"><Trash2 size={14} /></button>
+                        <IconBtn size="sm" tone="primary" icon={<Eye size={14} />} label="查看详情" onClick={() => setDetailTask(task)} />
+                        <IconBtn size="sm" tone="danger" icon={<Trash2 size={14} />} label="删除" />
                       </div>
                     </div>
                   );

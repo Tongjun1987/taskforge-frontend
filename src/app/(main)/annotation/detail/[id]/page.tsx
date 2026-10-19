@@ -10,6 +10,7 @@ export async function generateStaticParams() {
     { id: 'ds_traffic_beh' },
     { id: 'anno_expert_event' },
     { id: 'ds_traffic_event' },
+    { id: 'mock_got_001' },
   ];
 }
 

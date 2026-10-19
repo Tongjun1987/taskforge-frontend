@@ -7,6 +7,7 @@ import {
   AlignLeft, Code2, Clock, ArrowUpDown
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface PromptTemplate {
   id: string;
@@ -194,12 +195,8 @@ export default function PromptManagementPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => openEditor(t)} style={{ padding: "5px 10px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 3 }}>
-                        <Edit3 size={11} color="#64748b" />编辑
-                      </button>
-                      <button onClick={() => copyTemplate(t)} style={{ padding: "5px 10px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 3 }}>
-                        <Copy size={11} color="#64748b" />复制
-                      </button>
+                      <IconBtn size="sm" tone="ghost" icon={<Edit3 size={13} />} label="编辑模板" onClick={() => openEditor(t)} />
+                      <IconBtn size="sm" tone="ghost" icon={<Copy size={13} />} label="复制模板" onClick={() => copyTemplate(t)} />
                     </div>
                   </div>
                   <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 10px 0", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>

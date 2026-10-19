@@ -1094,7 +1094,7 @@ export default function PRDPage() {
                   <SectionTitle title="产品架构图" desc="从数据到模型到应用的全链路数据要素价值体系" color={currentModule.color} />
                   <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#f0f4f8" }}>
                     <iframe
-                      src="/architecture.html"
+                      src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/architecture.html`}
                       style={{ width: "100%", height: "820px", border: "none", display: "block" }}
                       title="零数数智工厂产品架构图"
                     />

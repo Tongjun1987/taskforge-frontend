@@ -8,6 +8,7 @@ import {
   Download, ArrowUpDown, Tag, Sparkles, ChevronUp, Link2, Package
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 // ============================================================
 // Mock 数据
@@ -219,27 +220,23 @@ function TrainingListTab({ onCreate }: { onCreate: () => void }) {
               )}
               <div style={{ display: "flex", gap: 4 }}>
                 {task.status === "running" && (
-                  <button onClick={() => actionTask(task.id, "pause")} title="暂停" style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <Pause size={12} color="#d97706" />
-                  </button>
+                  <IconBtn size="sm" tone="warn" icon={<Pause size={13} />} label="暂停" onClick={() => actionTask(task.id, "pause")} />
                 )}
                 {task.status === "paused" && (
-                  <button onClick={() => actionTask(task.id, "resume")} title="恢复" style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <Play size={12} color="#16a34a" />
-                  </button>
+                  <IconBtn size="sm" tone="success" icon={<Play size={13} />} label="恢复" onClick={() => actionTask(task.id, "resume")} />
                 )}
                 {(task.status === "running" || task.status === "queued") && (
-                  <button onClick={() => actionTask(task.id, "stop")} title="停止" style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid #fecaca", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <X size={12} color="#dc2626" />
-                  </button>
+                  <IconBtn size="sm" tone="danger" icon={<X size={13} />} label="停止" onClick={() => actionTask(task.id, "stop")} />
                 )}
-                <button onClick={() => toggleExpand(task.id)} title="查看详情" style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                  {expanded === task.id ? <ChevronUp size={12} color="#64748b" /> : <ChevronDown size={12} color="#64748b" />}
-                </button>
+                <IconBtn
+                  size="sm"
+                  tone="ghost"
+                  icon={expanded === task.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  label={expanded === task.id ? "收起详情" : "查看详情"}
+                  onClick={() => toggleExpand(task.id)}
+                />
                 {task.status !== "running" && (
-                  <button onClick={() => actionTask(task.id, "delete")} title="删除" style={{ padding: "5px 8px", borderRadius: 5, border: "1px solid #fecaca", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
-                    <Trash2 size={12} color="#dc2626" />
-                  </button>
+                  <IconBtn size="sm" tone="danger" icon={<Trash2 size={13} />} label="删除" onClick={() => actionTask(task.id, "delete")} />
                 )}
               </div>
             </div>

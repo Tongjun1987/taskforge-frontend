@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Target, Database, FileText, Settings, CircleCheckBig,
-  TriangleAlert, Clock, Edit3, ChevronRight, Cpu, Layers, ChartBar
+  TriangleAlert, Clock, Edit3, ChevronRight, Cpu, Layers, ChartBar, Activity
 } from "lucide-react";
+import { TASK_PIPELINES, TASK_RUNS } from "@/components/production/mock";
 
 interface LabelNode { id: string; name: string; color: string; description: string; children: LabelNode[]; }
 interface Scene { id: string; name: string; description: string; type: string; task_count: number; dataset_count: number; created_at: string; status: string; labelSchema?: LabelNode[]; }
@@ -16,6 +17,7 @@ interface ModelRequirement { id: string; category: string; name: string; value: 
 interface Task {
   id: string; name: string; scene_id: string; task_type: string; modality: string;
   dataset_count: number; quality_status: string; created_at: string; sampleUnit?: string;
+  outputTarget?: string;
   dataSpec?: DataSpec; qualityStandard?: QualityStandard; annotationSpec?: AnnotationSpec;
   evaluationMetrics?: EvaluationMetric[]; modelRequirements?: ModelRequirement[];
 }
@@ -49,9 +51,22 @@ export default function TaskDetailClient() {
   const router = useRouter();
   const params = useParams();
   const taskId = params.id as string;
+  const searchParams = useSearchParams();
   const [task, setTask] = useState<Task | null>(null);
   const [scene, setScene] = useState<Scene | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "data" | "metrics" | "model">("overview");
+  type TabKey = "overview" | "data" | "metrics" | "model";
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const t = searchParams.get("tab");
+    return t === "data" || t === "metrics" || t === "model" ? t : "overview";
+  });
+
+  // 运行详情不在本页，属于「任务追踪」模块：/task-modeling/track/{runId}
+  const switchTab = (key: TabKey) => {
+    setActiveTab(key);
+    if (typeof window === "undefined") return;
+    const base = `/task-modeling/task/${taskId}`;
+    window.history.replaceState(null, "", key === "overview" ? base : `${base}?tab=${key}`);
+  };
 
   useEffect(() => {
     for (const sceneId of Object.keys(MOCK_TASKS)) {
@@ -78,12 +93,31 @@ export default function TaskDetailClient() {
 
   const qualityStyle = getQualityStyle(task.quality_status);
 
+  // 任务创建时选定的产线（只读快照）：同一任务固定对应一条，避免详情页每次刷新跳变
+  const pipelinePick =
+    TASK_PIPELINES[
+      task.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % TASK_PIPELINES.length
+    ];
+  const pipeStatusMap: Record<string, { bg: string; color: string; text: string }> = {
+    running: { bg: "#dcfce7", color: "#16a34a", text: "运行中" },
+    queued: { bg: "#fef3c7", color: "#d97706", text: "排队中" },
+    idle: { bg: "#f1f5f9", color: "#64748b", text: "空闲" },
+    error: { bg: "#fee2e2", color: "#dc2626", text: "异常" },
+  };
+  const pipeStatus = pipeStatusMap[pipelinePick.status] ?? pipeStatusMap.idle;
+  const pipelineOps = pipelinePick.nodes.reduce((acc, n) => acc + n.ops, 0);
+
+  // 运行详情属于「任务追踪」模块，任务详情只提供跳转入口
+  const latestRun = TASK_RUNS.find((r) => r.taskId === task.id);
+  const trackingHref = `/task-modeling/track/${latestRun?.id ?? task.id}`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f8fafc" }}>
       <div style={{ height: 56, background: "#fff", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", padding: "0 24px", gap: 16 }}>
         <button onClick={() => router.push("/task-modeling")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer", color: "#64748b", fontSize: 13 }}><ArrowLeft size={16} /> 返回</button>
         <div style={{ width: 1, height: 24, background: "#e2e8f0" }} />
         <div style={{ flex: 1 }}><h1 style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", margin: 0 }}>{task.name}</h1><p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>{scene?.name} / {task.task_type}</p></div>
+        <button onClick={() => router.push(trackingHref)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 14, cursor: "pointer" }}><Activity size={15} /> 执行跟踪</button>
         <button onClick={() => router.push(`/task-modeling/task/edit/${task.id}`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "#4f46e5", color: "#fff", border: "none", borderRadius: 6, fontSize: 14, cursor: "pointer" }}><Edit3 size={16} /> 编辑任务</button>
       </div>
 
@@ -108,8 +142,8 @@ export default function TaskDetailClient() {
         </div>
 
         <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #e2e8f0" }}>
-          {([{ key: "overview", label: "任务概览", icon: Target }, { key: "data", label: "数据需求", icon: Database }, { key: "metrics", label: "评测指标", icon: ChartBar }, { key: "model", label: "模型需求", icon: Cpu }] as const).map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", fontSize: 14, fontWeight: activeTab === tab.key ? 600 : 400, color: activeTab === tab.key ? "#4f46e5" : "#64748b", background: "none", border: "none", borderBottom: activeTab === tab.key ? "2px solid #4f46e5" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}><tab.icon size={16} />{tab.label}</button>
+          {([{ key: "overview", label: "任务概览", icon: Target }, { key: "data", label: "生产需求", icon: Database }, { key: "metrics", label: "评测指标", icon: ChartBar }, { key: "model", label: "模型需求", icon: Cpu }] as const).map((tab) => (
+            <button key={tab.key} onClick={() => switchTab(tab.key)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", fontSize: 14, fontWeight: activeTab === tab.key ? 600 : 400, color: activeTab === tab.key ? "#4f46e5" : "#64748b", background: "none", border: "none", borderBottom: activeTab === tab.key ? "2px solid #4f46e5" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}><tab.icon size={16} />{tab.label}</button>
           ))}
         </div>
 
@@ -124,6 +158,36 @@ export default function TaskDetailClient() {
                     <div key={label}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>{label}</div><div style={{ fontSize: 13, color: "#1e293b" }}>{value}</div></div>
                   ))}
                 </div>
+              </div>
+              <div style={{ padding: 16, background: "#f8fafc", borderRadius: 8, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>生产配置</div>
+                  <span style={{ fontSize: 11, color: "#94a3b8" }}>创建任务时选定，定义在「智能产线装配 · 产线编排」维护</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 12px" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{pipelinePick.name}</span>
+                  <span style={{ padding: "1px 8px", borderRadius: 10, fontSize: 11, background: "#eef2ff", color: "#4f46e5" }}>{pipelinePick.version}</span>
+                  <span style={{ padding: "1px 8px", borderRadius: 10, fontSize: 11, background: pipeStatus.bg, color: pipeStatus.color }}>{pipeStatus.text}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "auto" }}>{pipelinePick.id} · 更新于 {pipelinePick.updatedAt}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>工序链路（{pipelinePick.nodes.length} 个节点 · {pipelineOps} 个算子）</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
+                  {pipelinePick.nodes.map((n, i) => (
+                    <React.Fragment key={n.name + i}>
+                      <div style={{ minWidth: 104, padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", borderTop: `3px solid ${n.tone}`, background: "#fff", flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>{n.name}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{n.ops} 个算子</div>
+                      </div>
+                      {i < pipelinePick.nodes.length - 1 && <ChevronRight size={14} style={{ color: "#cbd5e1", flexShrink: 0 }} />}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                  {[{ label: "输入数据集", value: pipelinePick.dataset }, { label: "计算资源", value: pipelinePick.resource }, { label: "绑定规则", value: pipelinePick.rules.join(" / ") }, { label: "产线版本", value: `${pipelinePick.version}（本次运行快照）` }].map(({ label, value }) => (
+                    <div key={label}><div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>{label}</div><div style={{ fontSize: 13, color: "#1e293b" }}>{value}</div></div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: "12px 0 0" }}>换产线或调整工序组合请到「智能产线装配」修改并保存新版本，再通过「编辑任务」重新选择；已产生的运行记录不会被改写。</p>
               </div>
               {task.sampleUnit && <div style={{ padding: 16, background: "#f8fafc", borderRadius: 8, marginBottom: 16 }}><div style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 8 }}>样本单元</div><p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>{task.sampleUnit}</p></div>}
               <div style={{ padding: 16, background: "#f8fafc", borderRadius: 8 }}>
@@ -141,13 +205,13 @@ export default function TaskDetailClient() {
           )}
           {activeTab === "data" && (
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}><h3 style={{ fontSize: 16, fontWeight: 600, color: "#1e293b", margin: 0 }}>数据需求</h3></div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}><h3 style={{ fontSize: 16, fontWeight: 600, color: "#1e293b", margin: 0 }}>生产需求</h3></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {task.dataSpec && (
                   <div style={{ padding: 20, background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #dbeafe, #93c5fd)", display: "flex", alignItems: "center", justifyContent: "center" }}><Database size={14} style={{ color: "#2563eb" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>数据规格</h4></div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #dbeafe, #93c5fd)", display: "flex", alignItems: "center", justifyContent: "center" }}><Database size={14} style={{ color: "#2563eb" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>输出目标</h4></div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-                      {[{ label: "目标数据量", value: task.dataSpec.dataVolume }, { label: "数据类型", value: task.dataSpec.dataType }, { label: "语言", value: task.dataSpec.language }, { label: "领域范围", value: task.dataSpec.domain }].map(({ label, value }) => (
+                      {[{ label: "交付形态", value: task.outputTarget || "高质量数据集" }, { label: "目标数据量", value: task.dataSpec.dataVolume }, { label: "数据类型", value: task.dataSpec.dataType }, { label: "语言", value: task.dataSpec.language }, { label: "领域范围", value: task.dataSpec.domain }].map(({ label, value }) => (
                         <div key={label} style={{ padding: 12, background: "#f8fafc", borderRadius: 8 }}><div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{label}</div><div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{value}</div></div>
                       ))}
                     </div>
@@ -155,7 +219,7 @@ export default function TaskDetailClient() {
                 )}
                 {task.qualityStandard && (
                   <div style={{ padding: 20, background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #dcfce7, #86efac)", display: "flex", alignItems: "center", justifyContent: "center" }}><CircleCheckBig size={14} style={{ color: "#16a34a" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>质量标准</h4></div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #dcfce7, #86efac)", display: "flex", alignItems: "center", justifyContent: "center" }}><CircleCheckBig size={14} style={{ color: "#16a34a" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>生产规范 · 质量要求</h4></div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ padding: 12, background: "#f8fafc", borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}><div style={{ fontSize: 11, color: "#64748b", minWidth: 80 }}>准确率阈值</div><div><span style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", background: "#4f46e5", color: "#fff", borderRadius: 20, fontSize: 14, fontWeight: 600 }}>≥{(task.qualityStandard.accuracyThreshold * 100).toFixed(0)}%</span></div></div>
                       <div style={{ padding: 12, background: "#f8fafc", borderRadius: 8 }}><div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>一致性要求</div><div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>{task.qualityStandard.consistencyRequirement}</div></div>
@@ -165,7 +229,7 @@ export default function TaskDetailClient() {
                 )}
                 {task.annotationSpec && (
                   <div style={{ padding: 20, background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #fef3c7, #fcd34d)", display: "flex", alignItems: "center", justifyContent: "center" }}><FileText size={14} style={{ color: "#d97706" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>标注规范</h4></div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><div style={{ width: 28, height: 28, borderRadius: 6, background: "linear-gradient(135deg, #fef3c7, #fcd34d)", display: "flex", alignItems: "center", justifyContent: "center" }}><FileText size={14} style={{ color: "#d97706" }} /></div><h4 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>生产规范 · 标注要求</h4></div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ padding: 12, background: "#f8fafc", borderRadius: 8, borderLeft: "3px solid #4f46e5" }}><div style={{ fontSize: 11, fontWeight: 500, color: "#4f46e5", marginBottom: 6 }}>标注指南</div><div style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{task.annotationSpec.guidelines}</div></div>
                       <div style={{ padding: 12, background: "#fffbeb", borderRadius: 8, borderLeft: "3px solid #f59e0b" }}><div style={{ fontSize: 11, fontWeight: 500, color: "#92400e", marginBottom: 6 }}>边界案例处理规则</div><div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{task.annotationSpec.edgeCaseRules}</div></div>

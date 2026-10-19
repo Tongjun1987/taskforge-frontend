@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight as ChevronRightAlt
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 // 清洗任务类型
 interface CleaningJob {
@@ -474,8 +475,8 @@ export default function DataCleaningPage() {
                 </div>
                 {/* 操作 */}
                 <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                  <button onClick={() => router.push(`/data-cleaning/detail/${job.id}`)} title="查看报告" style={{ padding: 5, border: "none", background: "#eff6ff", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#2563eb" /></button>
-                  <button onClick={() => handleDelete(job.id, job.name)} title="删除" style={{ padding: 5, border: "none", background: "#fef2f2", borderRadius: 5, cursor: "pointer" }}><Trash2 size={13} color="#dc2626" /></button>
+                  <IconBtn size="sm" tone="primary" icon={<Eye size={14} />} label="查看报告" onClick={() => router.push(`/data-cleaning/detail/${job.id}`)} />
+                  <IconBtn size="sm" tone="danger" icon={<Trash2 size={14} />} label="删除" onClick={() => handleDelete(job.id, job.name)} />
                 </div>
               </div>
             ))
@@ -611,9 +612,9 @@ export default function DataCleaningPage() {
                     </div>
 
                     {/* 操作按钮 */}
-                    <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
-                      <button style={{ flex: 1, padding: "6px", border: "1px solid #e2e8f0", borderRadius: 5, background: "#fff", fontSize: 11, cursor: "pointer", color: "#64748b" }}>查看详情</button>
-                      <button style={{ flex: 1, padding: "6px", border: "none", borderRadius: 5, background: "#10b981", fontSize: 11, cursor: "pointer", color: "#fff", fontWeight: 600 }}>应用到任务</button>
+                    <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid #f1f5f9", justifyContent: "flex-end" }}>
+                      <IconBtn size="sm" tone="ghost" icon={<Eye size={14} />} label="查看详情" />
+                      <IconBtn size="sm" tone="success" icon={<Play size={14} />} label="应用到任务" />
                     </div>
                   </div>
                 );

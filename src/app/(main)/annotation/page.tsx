@@ -14,6 +14,7 @@ import {
   Layers, Database, Zap, BookOpen, Video, Mic, Box, GitMerge, Brain, TreePine, Network, Wrench,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface AnnotationJob {
   id: string;
@@ -486,22 +487,28 @@ export default function AnnotationPage() {
                     <td style={{ padding: "12px 16px" }}>
                       <div style={{ display: "flex", gap: 4 }}>
                         {(job.status === "in_progress" || job.status === "pending") && (
-                          <button
+                          <IconBtn
+                            size="sm"
+                            tone="success"
+                            icon={<Play size={14} />}
+                            label="进入标注"
                             onClick={() => router.push(`/annotation/label/${job.id}`)}
-                            title="进入标注"
-                            style={{ padding: 5, border: "none", background: "#f0fdf4", borderRadius: 5, cursor: "pointer" }}
-                          ><Play size={13} color="#16a34a" /></button>
+                          />
                         )}
-                        <button
+                        <IconBtn
+                          size="sm"
+                          tone="primary"
+                          icon={<Eye size={14} />}
+                          label="查看详情"
                           onClick={() => router.push(`/annotation/detail/${job.id}`)}
-                          title="详情"
-                          style={{ padding: 5, border: "none", background: "#eff6ff", borderRadius: 5, cursor: "pointer" }}
-                        ><Eye size={13} color="#2563eb" /></button>
-                        <button
+                        />
+                        <IconBtn
+                          size="sm"
+                          tone="danger"
+                          icon={<Trash2 size={14} />}
+                          label="删除"
                           onClick={() => handleDelete(job.id, job.name)}
-                          title="删除"
-                          style={{ padding: 5, border: "none", background: "#fef2f2", borderRadius: 5, cursor: "pointer" }}
-                        ><Trash2 size={13} color="#dc2626" /></button>
+                        />
                       </div>
                     </td>
                   </tr>

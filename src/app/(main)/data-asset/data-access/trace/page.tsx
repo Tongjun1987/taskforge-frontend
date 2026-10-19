@@ -21,6 +21,7 @@ import {
   CircleDot, GitCommitHorizontal, MoreHorizontal, Package, Cpu, Layers as LayersIcon,
   HardDrive, FileCode2, Download as DownloadIcon, Printer, Share
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 // ==================== 类型定义 ====================
 interface TraceRecord {
@@ -549,26 +550,9 @@ export default function TracePage() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <button
-                              onClick={() => openDetail(record)}
-                              style={{ padding: "4px 8px", border: "none", background: "#f1f5f9", borderRadius: 6, cursor: "pointer", color: "#64748b" }}
-                              title="查看详情"
-                            >
-                              <Route size={14} />
-                            </button>
-                            <button
-                              onClick={exportReport}
-                              style={{ padding: "4px 8px", border: "none", background: "#eff6ff", borderRadius: 6, cursor: "pointer", color: "#3b82f6" }}
-                              title="导出报告"
-                            >
-                              <FileCode2 size={14} />
-                            </button>
-                            <button
-                              style={{ padding: "4px 8px", border: "none", background: "#f1f5f9", borderRadius: 6, cursor: "pointer", color: "#64748b" }}
-                              title="更多"
-                            >
-                              <MoreHorizontal size={14} />
-                            </button>
+                            <IconBtn size="sm" tone="ghost" icon={<Route size={14} />} label="查看详情" onClick={() => openDetail(record)} />
+                            <IconBtn size="sm" tone="primary" icon={<FileCode2 size={14} />} label="导出报告" onClick={exportReport} />
+                            <IconBtn size="sm" tone="ghost" icon={<MoreHorizontal size={14} />} label="更多" />
                           </div>
                         </td>
                       </tr>

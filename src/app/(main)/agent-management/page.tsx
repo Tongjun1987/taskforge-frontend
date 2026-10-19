@@ -8,6 +8,7 @@ import {
   BookOpen
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface Agent {
   id: string;
@@ -213,16 +214,10 @@ export default function AgentManagementPage() {
                       </div>
                     ))}
                   </div>
-                  <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
-                    <button onClick={() => openFlow(a)} style={{ flex: 1, padding: "5px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
-                      <GitBranch size={11} color="#64748b" />流程画布
-                    </button>
-                    <button style={{ flex: 1, padding: "5px", borderRadius: 5, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
-                      <Edit3 size={11} color="#64748b" />编辑
-                    </button>
-                    <button style={{ flex: 1, padding: "5px", borderRadius: 5, border: "1px solid #fecaca", background: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
-                      <Trash2 size={11} color="#dc2626" />删除
-                    </button>
+                  <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid #f1f5f9", justifyContent: "flex-end" }}>
+                    <IconBtn size="sm" tone="ghost" icon={<GitBranch size={13} />} label="流程画布" onClick={() => openFlow(a)} />
+                    <IconBtn size="sm" tone="ghost" icon={<Edit3 size={13} />} label="编辑智能体" />
+                    <IconBtn size="sm" tone="danger" icon={<Trash2 size={13} />} label="删除智能体" />
                   </div>
                 </div>
               ))}

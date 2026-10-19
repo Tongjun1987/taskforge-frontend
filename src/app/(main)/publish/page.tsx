@@ -14,10 +14,11 @@ import {
   getPublishStats,
 } from "@/lib/services";
 import {
-  Plus, Rocket, Server, Package, Upload, Play, RotateCcw,
+  Plus, Rocket, Server, Package, Upload, Play, RotateCcw, FileText,
   ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface PublishJob {
   id: string;
@@ -339,19 +340,31 @@ export default function PublishPage() {
                     {/* 操作按钮 */}
                     <div className="mt-3 flex items-center gap-2">
                       {(job.status === "draft" || job.status === "failed") && (
-                        <button onClick={() => handleDeploy(job.id)} disabled={deployingJob === job.id}
-                          className="flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-50">
-                          <Play className="w-3.5 h-3.5" />{deployingJob === job.id ? "部署中..." : "部署"}
-                        </button>
+                        <IconBtn
+                          size="sm"
+                          tone="success"
+                          icon={<Play size={13} />}
+                          label={deployingJob === job.id ? "部署中..." : "部署"}
+                          disabled={deployingJob === job.id}
+                          onClick={() => handleDeploy(job.id)}
+                        />
                       )}
-                      <button onClick={() => handleViewLogs(job.id)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-                        部署日志
-                      </button>
+                      <IconBtn
+                        size="sm"
+                        tone="ghost"
+                        icon={<FileText size={13} />}
+                        label="部署日志"
+                        onClick={() => handleViewLogs(job.id)}
+                      />
                       {job.status === "deployed" && (
-                        <button onClick={() => handleRollback(job.id)} disabled={rollingBack === job.id}
-                          className="flex items-center gap-1 text-sm text-amber-600 hover:text-amber-700 disabled:opacity-50">
-                          <RotateCcw className="w-3.5 h-3.5" />{rollingBack === job.id ? "回滚中..." : "回滚"}
-                        </button>
+                        <IconBtn
+                          size="sm"
+                          tone="warn"
+                          icon={<RotateCcw size={13} />}
+                          label={rollingBack === job.id ? "回滚中..." : "回滚"}
+                          disabled={rollingBack === job.id}
+                          onClick={() => handleRollback(job.id)}
+                        />
                       )}
                     </div>
                   </div>

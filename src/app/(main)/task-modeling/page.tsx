@@ -21,7 +21,33 @@ import {
   CheckCircle,
   Cpu,
   Rocket,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  RotateCcw,
+  Activity,
+  GitBranch,
+  Eye,
 } from "lucide-react";
+
+import OverviewView from "@/components/production/OverviewView";
+import { IconBtn } from "@/components/production/ui";
+import PipelineView from "@/components/production/PipelineView";
+import ResourceView from "@/components/production/ResourceView";
+import MonitorView from "@/components/production/MonitorView";
+import AlertView from "@/components/production/AlertView";
+import ReportView from "@/components/production/ReportView";
+import {
+  TASK_PRIORITIES,
+  TASK_SCHEDULES,
+  TASK_INPUT_SOURCES,
+  TASK_OUTPUT_TARGETS,
+  TASK_PIPELINES,
+  TASK_RUNS,
+  KPI,
+} from "@/components/production/mock";
+import RulesView from "@/components/production/RulesView";
+import TrackingView from "@/components/production/TrackingView";
 
 // ===== 类型定义 =====
 interface LabelNode {
@@ -1002,54 +1028,27 @@ function LabelTreeNode({
                 {node.description}
               </span>
             )}
-            <button
+            <IconBtn
+              size="sm"
+              tone="primary"
+              icon={<Plus size={13} />}
+              label="添加子标签"
               onClick={() => onAddChild(node.id)}
-              title="添加子标签"
-              style={{
-                padding: "3px 6px",
-                fontSize: 11,
-                color: "#4f46e5",
-                background: "#f5f3ff",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              + 子标签
-            </button>
-            <button
+            />
+            <IconBtn
+              size="sm"
+              tone="ghost"
+              icon={<Edit3 size={13} />}
+              label="编辑标签"
               onClick={() => onStartEdit(node)}
-              title="编辑"
-              style={{
-                padding: "3px 6px",
-                fontSize: 11,
-                color: "#64748b",
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: 4,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              编辑
-            </button>
-            <button
+            />
+            <IconBtn
+              size="sm"
+              tone="danger"
+              icon={<Trash2 size={13} />}
+              label="删除标签"
               onClick={() => onDelete(node.id)}
-              title="删除"
-              style={{
-                padding: "3px 6px",
-                fontSize: 11,
-                color: "#ef4444",
-                background: "#fef2f2",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              删除
-            </button>
+            />
           </>
         )}
       </div>
@@ -1117,13 +1116,16 @@ function TaskModelingContent() {
   const [selectedScene, setSelectedScene] = useState<Scene | null>(null);
   const [sceneTasks, setSceneTasks] = useState<Task[]>([]);
   const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
-  const [activeSceneTab, setActiveSceneTab] = useState<"info" | "labels" | "tasks" | "datasets">("info");
+  const [activeSceneTab, setActiveSceneTab] = useState<"info" | "labels" | "tasks">("info");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showSceneModal, setShowSceneModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingScene, setEditingScene] = useState<Scene | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  // 生产调度中心增量：批量导入
+  const [showImport, setShowImport] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   // 场景表单
   const [sceneForm, setSceneForm] = useState({
@@ -1138,10 +1140,24 @@ function TaskModelingContent() {
     task_type: "",
     modality: "",
     sampleUnit: "",
+    priority: "中",
+    schedule: "单次执行",
+    inputSource: TASK_INPUT_SOURCES[0].name,
+    outputTarget: "高质量数据集",
+    pipelineId: TASK_PIPELINES[0].id,
+    processSteps: TASK_PIPELINES[0].nodes.map((n) => n.name) as string[],
     dataRequirements: [] as DataRequirement[],
     evaluationMetrics: [] as EvaluationMetric[],
     modelRequirements: [] as ModelRequirement[],
   });
+
+  // 新建任务弹窗：当前选中的产线（工序链路由产线定义带出，不可手改）
+  const selectedPipelineForForm =
+    TASK_PIPELINES.find((p) => p.id === taskForm.pipelineId) ?? TASK_PIPELINES[0];
+
+  // 新建任务弹窗：当前选中的具体数据源（展示地址/数据量/同步时间）
+  const selectedInputSourceForForm =
+    TASK_INPUT_SOURCES.find((s) => s.name === taskForm.inputSource) ?? TASK_INPUT_SOURCES[0];
 
   const DATA_FIELD_TYPES = ["string", "number", "boolean", "file", "array", "object"];
   const COMMON_DATA_FIELDS: Record<string, { field: string; type: string; required: boolean }[]> = {
@@ -1427,8 +1443,8 @@ const SAMPLE_UNITS: Record<string, string[]> = {
     setShowSceneModal(true);
   };
 
-  const handleEditScene = (scene: Scene, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditScene = (scene: Scene, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditingScene(scene);
     setSceneForm({
       name: scene.name,
@@ -1438,8 +1454,8 @@ const SAMPLE_UNITS: Record<string, string[]> = {
     setShowSceneModal(true);
   };
 
-  const handleDeleteScene = (sceneId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteScene = (sceneId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (confirm("确定删除该场景吗？")) {
       setScenes((prev) => prev.filter((s) => s.id !== sceneId));
       if (selectedScene?.id === sceneId) {
@@ -1492,14 +1508,23 @@ const SAMPLE_UNITS: Record<string, string[]> = {
     }
   };
 
-  const handleEditTask = (task: Task, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditTask = (task: Task, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setEditingTask(task);
     setTaskForm({
       name: task.name,
       task_type: task.task_type,
       modality: task.modality,
       sampleUnit: task.sampleUnit || "",
+      priority: (task as Task & { priority?: string }).priority || "中",
+      schedule: (task as Task & { schedule?: string }).schedule || "单次执行",
+      inputSource: (task as Task & { inputSource?: string }).inputSource || TASK_INPUT_SOURCES[0].name,
+      outputTarget: (task as Task & { outputTarget?: string }).outputTarget || "高质量数据集",
+      pipelineId:
+        (task as Task & { pipelineId?: string }).pipelineId || TASK_PIPELINES[0].id,
+      processSteps:
+        (task as Task & { processSteps?: string[] }).processSteps ||
+        TASK_PIPELINES[0].nodes.map((n) => n.name),
       dataRequirements: task.dataRequirements || [],
       evaluationMetrics: task.evaluationMetrics || [],
       modelRequirements: task.modelRequirements || [],
@@ -1507,8 +1532,8 @@ const SAMPLE_UNITS: Record<string, string[]> = {
     setShowTaskModal(true);
   };
 
-  const handleDeleteTask = (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteTask = (taskId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!selectedScene) return;
     if (confirm("确定删除该任务吗？")) {
       const newTasks = (MOCK_TASKS[selectedScene.id] || []).filter(
@@ -1548,10 +1573,18 @@ const SAMPLE_UNITS: Record<string, string[]> = {
         quality_status: "pending",
         created_at: new Date().toISOString().split("T")[0],
         sampleUnit: taskForm.sampleUnit,
+        priority: taskForm.priority,
+        schedule: taskForm.schedule,
+        inputSource: taskForm.inputSource,
+        outputTarget: taskForm.outputTarget,
+        processSteps: taskForm.processSteps,
+        pipelineId: taskForm.pipelineId,
+        pipelineName: selectedPipelineForForm.name,
+        pipelineVersion: selectedPipelineForForm.version,
         dataRequirements: taskForm.dataRequirements,
         evaluationMetrics: taskForm.evaluationMetrics,
         modelRequirements: taskForm.modelRequirements,
-      };
+      } as Task;
       const currentTasks = MOCK_TASKS[selectedScene.id] || [];
       MOCK_TASKS[selectedScene.id] = [...currentTasks, newTask];
       setSceneTasks([...currentTasks, newTask]);
@@ -1603,52 +1636,13 @@ const SAMPLE_UNITS: Record<string, string[]> = {
     <div
       style={{
         display: "flex",
+        flex: 1,
         flexDirection: "column",
-        height: "100vh",
+        minHeight: 0,
         background: "#f8fafc",
       }}
     >
-      {/* 顶部导航栏 */}
-      <div
-        style={{
-          height: 56,
-          background: "#fff",
-          borderBottom: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 24px",
-          gap: 16,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", margin: 0 }}>
-            任务建模
-          </h1>
-          <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-            定义业务场景与任务结构，统一规划数据和模型需求，牵引后续高质量数据集生产和模型训练应用全生命周期
-          </p>
-        </div>
-        <button
-          onClick={handleCreateScene}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            background: "#4f46e5",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={16} />
-          新建场景
-        </button>
-      </div>
-
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
         {/* 左侧场景列表 */}
         <div
           style={{
@@ -1659,8 +1653,61 @@ const SAMPLE_UNITS: Record<string, string[]> = {
             flexDirection: "column",
           }}
         >
-          {/* 搜索 */}
+          {/* 场景操作区 */}
           <div style={{ padding: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 10,
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+                场景列表
+                <span style={{ fontWeight: 400, color: "#94a3b8", marginLeft: 6 }}>
+                  {filteredScenes.length}
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setShowImport(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "5px 10px",
+                    fontSize: 12,
+                    color: "#64748b",
+                    background: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Upload size={12} />
+                  批量导入
+                </button>
+                <button
+                  onClick={handleCreateScene}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "5px 10px",
+                    fontSize: 12,
+                    color: "#fff",
+                    background: "#4f46e5",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus size={12} />
+                  新建场景
+                </button>
+              </div>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -1808,58 +1855,33 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                   <div
                     style={{
                       display: "flex",
-                      gap: 4,
+                      gap: 6,
                       marginTop: 8,
                       paddingTop: 8,
                       borderTop: "1px solid #f1f5f9",
                     }}
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openSceneDetail(scene);
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "4px 8px",
-                        fontSize: 12,
-                        color: "#4f46e5",
-                        background: "#f5f3ff",
-                        border: "none",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                    >
-                      查看详情
-                    </button>
-                    <button
-                      onClick={(e) => handleEditScene(scene, e)}
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: 12,
-                        color: "#64748b",
-                        background: "#f8fafc",
-                        border: "none",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Edit3 size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteScene(scene.id, e)}
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: 12,
-                        color: "#ef4444",
-                        background: "#fef2f2",
-                        border: "none",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <IconBtn
+                      size="sm"
+                      tone="primary"
+                      icon={<Eye size={13} />}
+                      label="查看场景详情"
+                      onClick={() => openSceneDetail(scene)}
+                    />
+                    <IconBtn
+                      size="sm"
+                      tone="ghost"
+                      icon={<Edit3 size={13} />}
+                      label="编辑场景"
+                      onClick={() => handleEditScene(scene, undefined)}
+                    />
+                    <IconBtn
+                      size="sm"
+                      tone="danger"
+                      icon={<Trash2 size={13} />}
+                      label="删除场景"
+                      onClick={() => handleDeleteScene(scene.id, undefined)}
+                    />
                   </div>
                 </div>
 
@@ -2094,11 +2116,10 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                     { key: "info", label: "基本信息" },
                     { key: "labels", label: "标签体系" },
                     { key: "tasks", label: "任务列表" },
-                    { key: "datasets", label: "数据列表" },
                   ].map((tab) => (
                     <button
                       key={tab.key}
-                      onClick={() => setActiveSceneTab(tab.key as "info" | "labels" | "tasks" | "datasets")}
+                      onClick={() => setActiveSceneTab(tab.key as "info" | "labels" | "tasks")}
                       style={{
                         padding: "8px 16px",
                         fontSize: 14,
@@ -2143,20 +2164,6 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                           {sceneTasks.length}
                         </span>
                       )}
-                      {tab.key === "datasets" && (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            padding: "1px 6px",
-                            borderRadius: 10,
-                            fontSize: 11,
-                            background: "#f0fdf4",
-                            color: "#16a34a",
-                          }}
-                        >
-                          3
-                        </span>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -2188,9 +2195,7 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                               background: "#fff",
                               borderRadius: 8,
                               border: "1px solid #e2e8f0",
-                              cursor: "pointer",
                             }}
-                            onClick={() => setActiveSceneTab("datasets")}
                           >
                             <Database size={20} style={{ color: "#4f46e5", marginBottom: 8 }} />
                             <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b" }}>数据集</span>
@@ -2315,7 +2320,7 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                             color: "#4f46e5",
                             cursor: "pointer",
                           }}
-                          onClick={() => setActiveSceneTab("datasets")}
+                          onClick={() => router.push("/data-asset/dataset")}
                         >
                           {selectedScene.dataset_count}
                         </div>
@@ -2472,6 +2477,26 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                                   <Clock size={12} />
                                   {task.created_at}
                                 </span>
+                                <span
+                                  style={{
+                                    padding: "2px 8px",
+                                    borderRadius: 4,
+                                    background: "#fff7ed",
+                                    color: "#b45309",
+                                  }}
+                                >
+                                  优先级 {TASK_PRIORITIES[task.name.length % TASK_PRIORITIES.length]}
+                                </span>
+                                <span
+                                  style={{
+                                    padding: "2px 8px",
+                                    borderRadius: 4,
+                                    background: "#eff6ff",
+                                    color: "#2563eb",
+                                  }}
+                                >
+                                  调度 {TASK_SCHEDULES[task.name.length % TASK_SCHEDULES.length]}
+                                </span>
                               </div>
                               {/* 评测指标摘要 */}
                               {task.evaluationMetrics && task.evaluationMetrics.length > 0 && (
@@ -2504,35 +2529,28 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                                 </div>
                               )}
                             </div>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button
-                                onClick={(e) => handleEditTask(task, e)}
-                                style={{
-                                  padding: "6px 12px",
-                                  fontSize: 12,
-                                  color: "#64748b",
-                                  background: "#f8fafc",
-                                  border: "1px solid #e2e8f0",
-                                  borderRadius: 6,
-                                  cursor: "pointer",
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                              <IconBtn
+                                icon={<Activity size={14} />}
+                                label="任务跟踪"
+                                tone="primary"
+                                onClick={() => {
+                                  const latestRun = TASK_RUNS.find((r) => r.taskId === task.id);
+                                  router.push(`/task-modeling/track/${latestRun?.id ?? task.id}`);
                                 }}
-                              >
-                                <Edit3 size={12} />
-                              </button>
-                              <button
-                                onClick={(e) => handleDeleteTask(task.id, e)}
-                                style={{
-                                  padding: "6px 12px",
-                                  fontSize: 12,
-                                  color: "#ef4444",
-                                  background: "#fef2f2",
-                                  border: "1px solid #fee2e2",
-                                  borderRadius: 6,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                <Trash2 size={12} />
-                              </button>
+                              />
+                              <IconBtn
+                                icon={<Edit3 size={14} />}
+                                label="编辑任务"
+                                tone="ghost"
+                                onClick={() => handleEditTask(task, undefined)}
+                              />
+                              <IconBtn
+                                icon={<Trash2 size={14} />}
+                                label="删除任务"
+                                tone="danger"
+                                onClick={() => handleDeleteTask(task.id, undefined)}
+                              />
                             </div>
                           </div>
                         ))}
@@ -2566,135 +2584,6 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                     )}
                   </div>
                 )}
-
-                {/* 数据列表 Tab */}
-                {activeSceneTab === "datasets" && (
-                  <div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 16,
-                      }}
-                    >
-                      <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>
-                        关联数据集
-                      </h3>
-                      <button
-                        onClick={() => router.push("/data-asset/dataset")}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "7px 14px",
-                          fontSize: 13,
-                          color: "#4f46e5",
-                          background: "#eef2ff",
-                          border: "none",
-                          borderRadius: 6,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <ArrowRight size={14} />
-                        查看全部
-                      </button>
-                    </div>
-                    {/* 静态数据列表 */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      {[
-                        {
-                          id: "ds-1",
-                          name: "交通事故检测数据集",
-                          type: "图像-目标检测",
-                          itemCount: 2856,
-                          annotatedCount: 2400,
-                          status: "进行中",
-                          statusColor: "#f59e0b",
-                        },
-                        {
-                          id: "ds-2",
-                          name: "交通拥堵识别数据集",
-                          type: "图像-分类",
-                          itemCount: 1520,
-                          annotatedCount: 1520,
-                          status: "已完成",
-                          statusColor: "#22c55e",
-                        },
-                        {
-                          id: "ds-3",
-                          name: "违章行为检测数据集",
-                          type: "视频-目标跟踪",
-                          itemCount: 856,
-                          annotatedCount: 320,
-                          status: "进行中",
-                          statusColor: "#f59e0b",
-                        },
-                      ].map((ds) => (
-                        <div
-                          key={ds.id}
-                          onClick={() => router.push(`/data-asset/dataset/detail/${ds.id}`)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 16,
-                            padding: 16,
-                            borderRadius: 8,
-                            border: "1px solid #e2e8f0",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
-                            (e.currentTarget as HTMLElement).style.borderColor = "#bfdbfe";
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLElement).style.boxShadow = "none";
-                            (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 10,
-                              background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <Database size={20} style={{ color: "#16a34a" }} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
-                                {ds.name}
-                              </span>
-                              <span
-                                style={{
-                                  padding: "2px 8px",
-                                  borderRadius: 4,
-                                  fontSize: 11,
-                                  background: "#f0fdf4",
-                                  color: ds.statusColor,
-                                }}
-                              >
-                                {ds.status}
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: 12, color: "#64748b" }}>
-                              <span>{ds.type}</span>
-                              <span>样本数：{ds.itemCount}</span>
-                              <span>已标注：{ds.annotatedCount}</span>
-                            </div>
-                          </div>
-                          <ArrowRight size={16} style={{ color: "#94a3b8" }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           ) : (
@@ -2717,6 +2606,171 @@ const SAMPLE_UNITS: Record<string, string[]> = {
           )}
         </div>
       </div>
+
+      {/* 批量导入模态框（生产调度中心增量） */}
+      {showImport && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+          }}
+          onClick={() => setShowImport(false)}
+        >
+          <div
+            style={{ width: 560, background: "#fff", borderRadius: 12, padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", margin: 0 }}>
+                批量导入任务
+              </h3>
+              <button
+                onClick={() => setShowImport(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#94a3b8" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 16px", lineHeight: 1.7 }}>
+              按模板批量创建任务；导入后自动归属到所选场景，并按「调度周期」自动生成周期性任务。
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 14px",
+                border: "1px dashed #c7d2fe",
+                background: "#f5f3ff",
+                borderRadius: 8,
+                marginBottom: 16,
+              }}
+            >
+              <FileSpreadsheet size={18} style={{ color: "#4f46e5", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>
+                  任务导入模板.xlsx
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                  字段：任务名称 / 任务类型 / 数据模态 / 样本单元 / 优先级 / 调度周期 / 评估指标
+                </div>
+              </div>
+              <button
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  color: "#4f46e5",
+                  background: "#fff",
+                  border: "1px solid #ddd6fe",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                <Download size={12} />
+                下载模板
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}
+              >
+                导入到场景
+              </label>
+              <select
+                defaultValue={selectedScene?.id || ""}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  outline: "none",
+                  color: "#1e293b",
+                }}
+              >
+                <option value="">请选择场景</option>
+                {scenes.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "16px 14px",
+                border: "1px dashed #e2e8f0",
+                borderRadius: 8,
+                cursor: "pointer",
+                marginBottom: 20,
+              }}
+            >
+              <Upload size={18} style={{ color: "#94a3b8" }} />
+              <span style={{ fontSize: 13, color: importFileName ? "#1e293b" : "#94a3b8" }}>
+                {importFileName || "点击选择 .xlsx 文件（演示态，仅回显文件名）"}
+              </span>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: "none" }}
+                onChange={(e) => setImportFileName(e.target.files?.[0]?.name || "")}
+              />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+              <button
+                onClick={() => setShowImport(false)}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  color: "#64748b",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => setShowImport(false)}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  color: "#fff",
+                  background: "#4f46e5",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                开始导入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 场景模态框 */}
       {showSceneModal && (
@@ -3026,6 +3080,175 @@ const SAMPLE_UNITS: Record<string, string[]> = {
                   选择该任务类型的样本单元定义
                 </p>
               )}
+            </div>
+
+            {/* 调度配置（生产调度中心增量：优先级 + 调度周期） */}
+            <div style={{ marginBottom: 16, display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label
+                  style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}
+                >
+                  任务优先级
+                </label>
+                <select
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    outline: "none",
+                    color: "#1e293b",
+                  }}
+                >
+                  {TASK_PRIORITIES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label
+                  style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}
+                >
+                  调度周期
+                </label>
+                <select
+                  value={taskForm.schedule}
+                  onChange={(e) => setTaskForm({ ...taskForm, schedule: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    outline: "none",
+                    color: "#1e293b",
+                  }}
+                >
+                  {TASK_SCHEDULES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: "#94a3b8", margin: "-8px 0 16px" }}>
+              选「单次执行」只创建一条任务；选小时/天/周/月会按周期自动生成批量生产任务。优先级用于算力紧张时的调度排序
+            </p>
+
+            {/* 生产配置（增量：输入数据源 / 输出目标 / 加工工序） */}
+            <div style={{ marginBottom: 16, display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}>
+                  输入数据源
+                </label>
+                <select
+                  value={taskForm.inputSource}
+                  onChange={(e) => setTaskForm({ ...taskForm, inputSource: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    outline: "none",
+                    color: "#1e293b",
+                  }}
+                >
+                  {TASK_INPUT_SOURCES.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}（{s.type}）
+                    </option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: "4px 0 0" }}>
+                  {selectedInputSourceForForm.location} · {selectedInputSourceForForm.scale} · 同步于 {selectedInputSourceForForm.syncedAt}
+                </p>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}>
+                  输出目标
+                </label>
+                <select
+                  value={taskForm.outputTarget}
+                  onChange={(e) => setTaskForm({ ...taskForm, outputTarget: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    outline: "none",
+                    color: "#1e293b",
+                  }}
+                >
+                  {TASK_OUTPUT_TARGETS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}>
+                生产产线（选择已装配好的产线，工序由产线定义）
+              </label>
+              <select
+                value={taskForm.pipelineId}
+                onChange={(e) => {
+                  const p = TASK_PIPELINES.find((x) => x.id === e.target.value);
+                  if (!p) return;
+                  setTaskForm({
+                    ...taskForm,
+                    pipelineId: p.id,
+                    processSteps: p.nodes.map((n) => n.name),
+                  });
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  outline: "none",
+                  color: "#1e293b",
+                  background: "#fff",
+                }}
+              >
+                {TASK_PIPELINES.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {p.version}（{p.nodes.length} 个节点）
+                  </option>
+                ))}
+              </select>
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: "9px 11px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  color: "#475569",
+                  lineHeight: 1.7,
+                }}
+              >
+                <span style={{ color: "#94a3b8" }}>工序链路：</span>
+                {taskForm.processSteps.join(" → ") || "-"}
+                <div style={{ color: "#94a3b8", marginTop: 2 }}>
+                  输入数据集 {selectedPipelineForForm.dataset} · 资源 {selectedPipelineForForm.resource}
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: "#94a3b8", margin: "8px 0 0" }}>
+                如需调整工序组合，请到「智能产线装配 · 产线编排」修改并保存新版本
+              </p>
             </div>
 
             {/* 评测指标配置 */}
@@ -3639,6 +3862,228 @@ const SAMPLE_UNITS: Record<string, string[]> = {
   );
 }
 
+// ===== 生产调度中心：两级菜单定义（对齐需求 4.2.1 / 4.2.2 / 4.2.3） =====
+type ViewKey =
+  | "taskList"
+  | "taskTrack"
+  | "pipeline"
+  | "rules"
+  | "resource"
+  | "templates"
+  | "overview"
+  | "monitor"
+  | "alert"
+  | "report";
+
+type ProdModule = {
+  key: string;
+  label: string;
+  desc: string;
+  icon: typeof Layers;
+  children: { key: ViewKey; label: string }[];
+};
+
+// 一级=三个模块，二级=各自小节
+const MODULES: ProdModule[] = [
+  {
+    key: "task",
+    label: "生产任务管理",
+    desc: "任务创建 · 全生命周期跟踪",
+    icon: Layers,
+    children: [
+      { key: "taskList", label: "生产任务" },
+      { key: "taskTrack", label: "任务跟踪" },
+    ],
+  },
+  {
+    key: "assembly",
+    label: "智能产线装配",
+    desc: "产线编排 · 规则模板库 · 产线模板库",
+    icon: GitBranch,
+    children: [
+      { key: "pipeline", label: "产线编排" },
+      { key: "rules", label: "规则模板库" },
+      { key: "templates", label: "产线模板库" },
+    ],
+  },
+  {
+    key: "ops",
+    label: "生产运行监管",
+    desc: "全景看板 · 运行监控 · 资源调度 · 异常告警 · 运营报表",
+    icon: Activity,
+    children: [
+      { key: "overview", label: "生产全景看板" },
+      { key: "monitor", label: "实时运行监控" },
+      { key: "resource", label: "资源调度" },
+      { key: "alert", label: "异常告警分析" },
+      { key: "report", label: "生产运营报表" },
+    ],
+  },
+];
+
+const ALL_VIEWS: ViewKey[] = MODULES.reduce<ViewKey[]>(
+  (acc, m) => acc.concat(m.children.map((c) => c.key)),
+  []
+);
+
+// ===== 生产调度中心外壳（增量改造：在原首页之上加视图切换与全局指标） =====
+// 目录（一级模块 + 二级小节）已统一到左侧栏，与「数据生产中心」结构一致；
+// 页面视图由 URL 的 ?view= 驱动，左侧目录与页面内容共用同一数据源。
+function ProductionControlCenter() {
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get("view");
+
+  const resolveView = (p: string | null): ViewKey =>
+    p && (ALL_VIEWS as string[]).includes(p) ? (p as ViewKey) : "taskList";
+
+  const [view, setView] = useState<ViewKey>(() => resolveView(viewParam));
+  const [refreshed, setRefreshed] = useState(false);
+
+  // 点左侧目录 / 浏览器前进后退时同步内部视图
+  useEffect(() => {
+    const next = resolveView(viewParam);
+    setView((cur) => (cur === next ? cur : next));
+  }, [viewParam]);
+
+  // 当前所属一级模块（切二级时一级高亮跟随）
+  const activeModule =
+    MODULES.find((m) => m.children.some((c) => c.key === view)) || MODULES[0];
+  const activeChild =
+    activeModule.children.find((c) => c.key === view) || activeModule.children[0];
+  const ModuleIcon = activeModule.icon;
+
+  const renderView = (k: ViewKey) => {
+    if (k === "taskList") return <TaskModelingContent />;
+    if (k === "taskTrack") return <TrackingView />;
+    if (k === "pipeline") return <PipelineView tab="editor" />;
+    if (k === "rules") return <RulesView />;
+    if (k === "resource") return <ResourceView />;
+    if (k === "templates") return <PipelineView tab="templates" />;
+    if (k === "overview") return <OverviewView />;
+    if (k === "monitor") return <MonitorView />;
+    if (k === "alert") return <AlertView />;
+    return <ReportView />;
+  };
+
+  const globalStats = [
+    { k: "在行产线", v: `${KPI.runningPipelines}/${KPI.totalPipelines}`, tone: "#4f46e5" },
+    { k: "今日产出", v: `${KPI.todayOutput} 万条`, tone: "#16a34a" },
+    { k: "资源利用率", v: `${KPI.resourceUsage}%`, tone: "#0ea5e9" },
+    { k: "告警", v: `${KPI.alertCount} 条`, tone: "#dc2626" },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        background: "#f8fafc",
+      }}
+    >
+      {/* 顶栏 */}
+      <header
+        style={{
+          height: 56,
+          background: "#fff",
+          borderBottom: "1px solid #e2e8f0",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 20px",
+          gap: 16,
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ModuleIcon size={17} style={{ color: "#fff" }} />
+          </span>
+          <div>
+            <h1
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: "#1e293b",
+                margin: 0,
+                lineHeight: 1.25,
+              }}
+            >
+              {activeChild.label}
+            </h1>
+            <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>
+              {activeModule.label} · {activeModule.desc}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* 产线模板库是资产库视角，全局产线/产出/告警指标与该页无关，此处不展示 */}
+        {view !== "templates" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {globalStats.map((s) => (
+              <div key={s.k} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "#94a3b8" }}>{s.k}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: s.tone }}>{s.v}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={() => {
+            setRefreshed(true);
+            window.setTimeout(() => setRefreshed(false), 1500);
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "7px 14px",
+            fontSize: 13,
+            color: "#1e293b",
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            borderRadius: 6,
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <RotateCcw size={14} />
+          {refreshed ? "已刷新" : "刷新"}
+        </button>
+      </header>
+
+      {/* 目录（一级模块 / 二级小节）已移至左侧栏，详见 components/layout/TopNavBar.tsx 的 TOP_MENUS */}
+
+      {/* 内容区：全部保留挂载，切换用 display 控制以保留各自交互状态 */}
+      {ALL_VIEWS.map((k) => (
+        <div
+          key={k}
+          style={{
+            display: view === k ? "flex" : "none",
+            flex: 1,
+            minHeight: 0,
+            flexDirection: "column",
+          }}
+        >
+          {renderView(k)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ===== 导出带 Suspense 的页面组件 =====
 export default function TaskModelingPage() {
   return (
@@ -3670,7 +4115,7 @@ export default function TaskModelingPage() {
         </div>
       }
     >
-      <TaskModelingContent />
+      <ProductionControlCenter />
     </Suspense>
   );
 }

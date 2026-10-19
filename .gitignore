@@ -8,7 +8,10 @@
 
 # next.js
 /.next/
+/.next-export/
 /out/
+build_error.log
+build_output.log
 
 # production
 /build

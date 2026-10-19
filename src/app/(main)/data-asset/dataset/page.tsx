@@ -12,6 +12,7 @@ import {
   GitMerge, EyeOff, UserCheck, KeyRound, DownloadCloud,
   ChevronLeft, ChevronRight as ChevronRightAlt, ActivitySquare
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 // ==================== Types ====================
 interface DatasetVersion {
@@ -1129,18 +1130,14 @@ export default function DatasetManagerPage() {
                   <PublishStatusBadge status={ds.publish_status || "draft"} />
                 </div>
                 {/* 操作 - 图标 */}
-                <div onClick={e => e.stopPropagation()} style={{ display: "flex", justifyContent: "center" }}>
-                  <button
+                <div onClick={e => e.stopPropagation()} style={{ display: "flex", justifyContent: "center", gap: 6 }}>
+                  <IconBtn
+                    size="sm"
+                    tone="primary"
+                    icon={<Eye size={14} />}
+                    label="查看详情"
                     onClick={() => router.push(`/data-asset/dataset/detail/${ds.id}`)}
-                    title="查看详情"
-                    style={{
-                      width: 32, height: 32, borderRadius: 6, border: "1px solid #e2e8f0",
-                      background: "#fff", color: "#3b82f6", cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    <Eye size={14} />
-                  </button>
+                  />
                 </div>
               </div>
             ))

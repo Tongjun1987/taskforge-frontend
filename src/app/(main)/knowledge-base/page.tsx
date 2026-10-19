@@ -7,6 +7,7 @@ import {
   BarChart3, MessageSquare, ToggleLeft, ToggleRight, EyeOff, FolderOpen,
   Edit3, Copy, ExternalLink, Trash, Clock, HardDrive
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 // ============ Mock Data ============
 const MOCK_KB_LIST = [
@@ -195,18 +196,8 @@ function KbCard({ kb, onConfig, onDelete }: { kb: typeof MOCK_KB_LIST[0]; onConf
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginLeft: 16 }}>
-          <button
-            onClick={onConfig}
-            style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
-          >
-            <Settings size={13} /> 配置
-          </button>
-          <button
-            onClick={onDelete}
-            style={{ background: "#fef2f2", color: "#dc2626", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
-          >
-            <Trash2 size={13} /> 删除
-          </button>
+          <IconBtn tone="primary" icon={<Settings size={15} />} label="配置知识库" onClick={onConfig} />
+          <IconBtn tone="danger" icon={<Trash2 size={15} />} label="删除知识库" onClick={onDelete} />
         </div>
       </div>
     </div>

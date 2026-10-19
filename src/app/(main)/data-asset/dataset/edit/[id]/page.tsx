@@ -10,6 +10,17 @@ export async function generateStaticParams() {
     { id: 'ds_track_001' },
     { id: 'ds_beh_001' },
     { id: 'ds_event_001' },
+    { id: 'mgr-traffic-det' },
+    { id: 'mgr-traffic-mot' },
+    { id: 'mgr-traffic-beh' },
+    { id: 'mgr-traffic-event' },
+    { id: 'mgr-traffic-ts' },
+    { id: 'mgr-001' },
+    { id: 'mgr-002' },
+    { id: 'mgr-003' },
+    { id: 'mgr-004' },
+    { id: 'mgr-005' },
+    { id: 'mgr-006' },
   ];
 }
 

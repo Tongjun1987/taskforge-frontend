@@ -13,6 +13,7 @@ import {
   Wifi, HardDriveDownload, CloudDownload, Database as DatabaseIcon, Server as ServerIcon,
   Activity, Loader2, Play, Pause
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 interface DatasetVersion {
   version: string;
@@ -1441,19 +1442,19 @@ function DatasetPageContent() {
                       <td style={{ padding: "13px 14px", textAlign: "center" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
                           {ops.includes("detail") && (
-                            <button onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} title="详情" style={{ padding: 5, border: "none", background: "#f1f5f9", borderRadius: 5, cursor: "pointer" }}><Eye size={13} color="#64748b" /></button>
+                            <IconBtn size="sm" tone="ghost" icon={<Eye size={13} />} label="查看详情" onClick={() => router.push(`/data-asset/data-access/detail/${d.id}`)} />
                           )}
                           {ops.includes("stop") && (
-                            <button onClick={() => { setSelectedId(d.id); setActiveModal("stop"); }} title="终止" style={{ padding: 5, border: "none", background: "#fee2e2", borderRadius: 5, cursor: "pointer" }}><AlertCircle size={13} color="#dc2626" /></button>
+                            <IconBtn size="sm" tone="danger" icon={<AlertCircle size={13} />} label="终止" onClick={() => { setSelectedId(d.id); setActiveModal("stop"); }} />
                           )}
                           {ops.includes("start") && (
-                            <button onClick={() => { setSelectedId(d.id); setActiveModal("start"); }} title="执行" style={{ padding: 5, border: "none", background: "#ecfdf5", borderRadius: 5, cursor: "pointer" }}><Play size={13} color="#10b981" /></button>
+                            <IconBtn size="sm" tone="success" icon={<Play size={13} />} label="执行" onClick={() => { setSelectedId(d.id); setActiveModal("start"); }} />
                           )}
                           {ops.includes("edit") && (
-                            <button onClick={() => { setSelectedId(d.id); setActiveModal("edit"); }} title="编辑" style={{ padding: 5, border: "none", background: "#fef3c7", borderRadius: 5, cursor: "pointer" }}><Pencil size={13} color="#d97706" /></button>
+                            <IconBtn size="sm" tone="warn" icon={<Pencil size={13} />} label="编辑" onClick={() => { setSelectedId(d.id); setActiveModal("edit"); }} />
                           )}
                           {ops.includes("branch") && (
-                            <button onClick={() => { setSelectedId(d.id); setActiveModal("branch"); }} title="协作分支" style={{ padding: 5, border: "none", background: "#ede9fe", borderRadius: 5, cursor: "pointer" }}><GitBranch size={13} color="#7c3aed" /></button>
+                            <IconBtn size="sm" tone="purple" icon={<GitBranch size={13} />} label="协作分支" onClick={() => { setSelectedId(d.id); setActiveModal("branch"); }} />
                           )}
                         </div>
                       </td>

@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { getQualityGates, runQualityGate, overrideGate } from "@/lib/services";
-import { Shield, Play, CheckCircle2, XCircle, Clock, AlertTriangle, RefreshCw, Eye, ChevronDown, Sparkles, GitCompare, BarChart3, TrendingUp } from "lucide-react";
+import { Shield, Play, CheckCircle2, XCircle, Clock, AlertTriangle, RefreshCw, Eye, ChevronDown, Sparkles, GitCompare, BarChart3, TrendingUp, FileText } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface GateStatus {
   gate_id: string;
@@ -262,22 +263,19 @@ export default function QualityPage() {
                         </td>
                         <td style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9" }}>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <button
-                              style={{ ...btnPrimary, opacity: isRunning || !gate.is_active ? 0.5 : 1 }}
+                            <IconBtn
+                              tone="success"
+                              icon={isRunning ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Play size={13} />}
+                              label={isRunning ? "运行中" : "运行检测"}
                               disabled={isRunning || !gate.is_active}
                               onClick={() => handleRun(gate)}
-                              title="运行检测"
-                            >
-                              {isRunning ? <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> : <Play size={12} />}
-                              {isRunning ? "运行中" : "运行"}
-                            </button>
-                            <button
-                              style={{ ...btnIcon, color: "#2563eb" }}
-                              title="展开详情"
+                            />
+                            <IconBtn
+                              tone="primary"
+                              icon={<ChevronDown size={14} style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />}
+                              label={isExpanded ? "收起详情" : "展开详情"}
                               onClick={() => setExpandedGate(isExpanded ? null : gate.gate_id)}
-                            >
-                              <ChevronDown size={14} style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
-                            </button>
+                            />
                           </div>
                         </td>
                       </tr>
@@ -427,7 +425,6 @@ export default function QualityPage() {
               ].map(a => {
                 const borderColor = a.level === "error" ? "#fecaca" : a.level === "warn" ? "#fde68a" : "#bfdbfe";
                 const bg = a.level === "error" ? "#fef2f2" : a.level === "warn" ? "#fffbeb" : "#eff6ff";
-                const textColor = a.level === "error" ? "#dc2626" : a.level === "warn" ? "#d97706" : "#1d4ed8";
                 return (
                   <div key={a.title} style={{ display: "flex", gap: 12, padding: "12px 14px", background: bg, border: `1px solid ${borderColor}`, borderRadius: 8, alignItems: "flex-start" }}>
                     <div style={{ fontSize: 18, flexShrink: 0 }}>{a.icon}</div>
@@ -437,7 +434,12 @@ export default function QualityPage() {
                         <span style={{ fontSize: 11, color: "#94a3b8" }}>{a.time}</span>
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6, marginBottom: 8 }}>{a.desc}</div>
-                      <button style={{ padding: "4px 10px", background: textColor, color: "#fff", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{a.action}</button>
+                      <IconBtn
+                        size="sm"
+                        tone="primary"
+                        icon={a.action.includes("清洗") ? <RefreshCw size={13} /> : a.action.includes("报告") ? <FileText size={13} /> : <Eye size={13} />}
+                        label={a.action}
+                      />
                     </div>
                   </div>
                 );

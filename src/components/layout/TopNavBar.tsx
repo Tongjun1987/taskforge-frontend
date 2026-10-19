@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import {
   Target, Database, Layers, Tag, Shield, BarChart3, Rocket,
@@ -9,7 +9,7 @@ import {
   Sparkles, Users, Star, FileText, CheckCircle2,
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
   Wrench, ClipboardList, Layers3, ArrowUpDown, TrendingUp,
-  History, Route, Upload, Cloud, Brain
+  History, Route, Upload, Cloud, Brain, Workflow
 } from "lucide-react";
 
 // ============================================================
@@ -17,13 +17,47 @@ import {
 // ============================================================
 const TOP_MENUS = [
   {
+    // 生产调度中心：目录结构与「数据生产中心」保持一致
+    // （一级 = 需求 4.2 三大模块，二级 = 各模块小节；左侧栏渲染，同数据生产中心）
     key: "task-modeling",
-    label: "首页",
+    label: "生产调度中心",
     icon: Target,
     href: "/task-modeling",
     color: "#3b82f6",
-    desc: "场景定义 · 任务拆解 · 标签Schema",
-    subItems: [],
+    desc: "生产任务管理 · 智能产线装配 · 生产运行监管",
+    subItems: [
+      {
+        label: "生产任务管理",
+        desc: "任务创建 · 全生命周期跟踪",
+        icon: ClipboardList,
+        children: [
+          { label: "生产任务", href: "/task-modeling", view: null, badge: null },
+          { label: "任务跟踪", href: "/task-modeling?view=taskTrack", view: "taskTrack", prefix: "/task-modeling/track", badge: null },
+        ],
+      },
+      {
+        label: "智能产线装配",
+        desc: "产线编排 · 规则模板库 · 产线模板库",
+        icon: Workflow,
+        children: [
+          { label: "产线编排", href: "/task-modeling?view=pipeline", view: "pipeline", badge: null },
+          { label: "规则模板库", href: "/task-modeling?view=rules", view: "rules", badge: null },
+          { label: "产线模板库", href: "/task-modeling?view=templates", view: "templates", badge: null },
+        ],
+      },
+      {
+        label: "生产运行监管",
+        desc: "全景看板 · 运行监控 · 资源调度 · 异常告警 · 运营报表",
+        icon: Activity,
+        children: [
+          { label: "生产全景看板", href: "/task-modeling?view=overview", view: "overview", badge: null },
+          { label: "实时运行监控", href: "/task-modeling?view=monitor", view: "monitor", badge: null },
+          { label: "资源调度", href: "/task-modeling?view=resource", view: "resource", badge: null },
+          { label: "异常告警分析", href: "/task-modeling?view=alert", view: "alert", badge: null },
+          { label: "生产运营报表", href: "/task-modeling?view=report", view: "report", badge: null },
+        ],
+      },
+    ],
   },
   {
     key: "data-production",
@@ -150,12 +184,31 @@ const TOP_MENUS = [
 ];
 
 // ============================================================
+// 辅助：菜单项选中态判定
+// 支持同一路由下的多视图（?view=xxx），未声明 view 字段的按普通路径精确匹配
+// ============================================================
+function makeIsActive(pathname: string, currentView: string | null) {
+  return (href?: string | null, view?: string | null, prefix?: string | null) => {
+    if (!href) return false;
+    const q = href.indexOf("?");
+    const path = q === -1 ? href : href.slice(0, q);
+    // prefix：子路由（如 /task-modeling/track/xxx）归属到列表项
+    if (prefix && pathname.startsWith(prefix)) return true;
+    if (pathname !== path) return false;
+    if (view === undefined) return true;
+    if (view === null) return !currentView;
+    return currentView === view;
+  };
+}
+
+// ============================================================
 // 辅助组件：带子项的下拉菜单
 // ============================================================
 function SubMenuPanel({ item, onClose }: { item: any; onClose: () => void }) {
   const pathname = usePathname();
-  // 使用精确匹配，避免子路径误匹配
-  const isActive = (href: string) => pathname === href;
+  const searchParams = useSearchParams();
+  // 使用精确匹配，避免子路径误匹配；带 view 的项按查询参数匹配
+  const isActive = makeIsActive(pathname, searchParams.get("view"));
 
   return (
     <div
@@ -253,19 +306,19 @@ function SubMenuPanel({ item, onClose }: { item: any; onClose: () => void }) {
                     gap: 8,
                     padding: "7px 14px 7px 36px",
                     textDecoration: "none",
-                    color: isActive(child.href) ? item.color : "#475569",
-                    background: isActive(child.href) ? `${item.color}10` : "transparent",
+                    color: isActive(child.href, child.view, child.prefix) ? item.color : "#475569",
+                    background: isActive(child.href, child.view, child.prefix) ? `${item.color}10` : "transparent",
                     fontSize: 12,
-                    fontWeight: isActive(child.href) ? 600 : 400,
+                    fontWeight: isActive(child.href, child.view, child.prefix) ? 600 : 400,
                     transition: "all 0.1s",
                   }}
                   onMouseEnter={e => {
-                    if (!isActive(child.href)) {
+                    if (!isActive(child.href, child.view, child.prefix)) {
                       (e.currentTarget as HTMLElement).style.background = "#f1f5f9";
                     }
                   }}
                   onMouseLeave={e => {
-                    if (!isActive(child.href)) {
+                    if (!isActive(child.href, child.view, child.prefix)) {
                       (e.currentTarget as HTMLElement).style.background = "transparent";
                     }
                   }}
@@ -608,6 +661,7 @@ function flattenSubItems(subItems: any[]): any[] {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
 
   const activeKey = (() => {
@@ -642,7 +696,7 @@ export function Sidebar() {
   const hoverBg = "#eef2f7";
   const activeColor = currentMenu?.color || "#3b82f6";
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = makeIsActive(pathname, searchParams.get("view"));
 
   if (!currentMenu || flatItems.length === 0) return null;
 
@@ -713,7 +767,7 @@ export function Sidebar() {
 
             {/* 子项 */}
             {(sub.children || []).map((child: any) => {
-              const childActive = isActive(child.href);
+              const childActive = isActive(child.href, child.view, child.prefix);
               return (
                 <Link
                   key={child.href}

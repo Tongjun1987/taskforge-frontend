@@ -8,6 +8,7 @@ import {
   Clock, Loader2, EyeOff, ToggleLeft, ToggleRight, Download, Upload, Copy,
   Target, Gauge, Filter, ChevronLeft, ChevronRight as ChevronRightAlt
 } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 type AugmentationType = "image" | "text" | "audio" | "video";
 type TaskStatus = "idle" | "running" | "completed" | "failed" | "paused";
@@ -547,9 +548,7 @@ export default function DataAugmentationPage() {
                     </div>
                     {/* 操作 */}
                     <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                      <button onClick={() => setDetailTask(task)} style={{ padding: "5px 6px", borderRadius: 6, background: "#eff6ff", color: "#2563eb", border: "none", cursor: "pointer" }} title="查看详情">
-                        <Eye size={14} />
-                      </button>
+                      <IconBtn size="sm" tone="primary" icon={<Eye size={14} />} label="查看详情" onClick={() => setDetailTask(task)} />
                     </div>
                   </div>
                 ))

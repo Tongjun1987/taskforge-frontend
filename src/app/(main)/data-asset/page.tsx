@@ -4,6 +4,7 @@ import { TopBar } from "@/components/layout/Sidebar";
 import { listDatasets, createDataset, uploadDataFile } from "@/lib/services";
 import { Plus, Search, RefreshCw, Eye, Pencil, Trash2, Upload, Database, X, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
+import { IconBtn } from "@/components/production/ui";
 
 interface Dataset {
   id: string;
@@ -299,28 +300,26 @@ export default function DataAssetPage() {
                       </td>
                       <td style={{ padding: "11px 14px", borderBottom: "1px solid #f1f5f9" }}>
                         <div style={{ display: "flex", gap: 4 }}>
-                          <button
-                            style={{ ...btnIcon, color: "#2563eb" }}
-                            title="查看"
+                          <IconBtn
+                            size="sm"
+                            tone="primary"
+                            icon={<Eye size={14} />}
+                            label={showDetailRow === ds.id ? "收起详情" : "查看详情"}
                             onClick={() => setShowDetailRow(showDetailRow === ds.id ? null : ds.id)}
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button style={{ ...btnIcon, color: "#64748b" }} title="编辑">
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            style={{ ...btnIcon, color: "#ef4444" }}
-                            title="删除"
+                          />
+                          <IconBtn size="sm" tone="ghost" icon={<Pencil size={14} />} label="编辑" />
+                          <IconBtn
+                            size="sm"
+                            tone="danger"
+                            icon={<Trash2 size={14} />}
+                            label="删除"
                             onClick={() => {
                               if (confirm(`确认删除「${ds.name}」？`)) {
                                 setDatasets(prev => prev.filter(d => d.id !== ds.id));
                                 toast.success("已删除");
                               }
                             }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          />
                         </div>
                       </td>
                     </tr>

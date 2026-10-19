@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Plus, Search, Database, Cloud, HardDrive, Box, Link2, Pencil, Trash2, Eye, X } from "lucide-react";
+import { IconBtn } from "@/components/production/ui";
 
 interface DataSource {
   id: string;
@@ -158,9 +159,9 @@ export default function DataSourcePage() {
                 <td style={{ padding: "14px 16px", textAlign: "center" }}><StatusBadge status={d.status} /></td>
                 <td style={{ padding: "14px 16px", textAlign: "center" }}>
                   <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-                    <button title="查看" style={{ padding: 6, border: "none", background: "#f1f5f9", borderRadius: 6, cursor: "pointer" }}><Eye size={14} color="#64748b" /></button>
-                    <button onClick={() => handleEdit(d)} title="编辑" style={{ padding: 6, border: "none", background: "#eff6ff", borderRadius: 6, cursor: "pointer" }}><Pencil size={14} color="#2563eb" /></button>
-                    <button onClick={() => handleDelete(d.id)} title="删除" style={{ padding: 6, border: "none", background: "#fef2f2", borderRadius: 6, cursor: "pointer" }}><Trash2 size={14} color="#dc2626" /></button>
+                    <IconBtn size="sm" tone="ghost" icon={<Eye size={14} />} label="查看" />
+                    <IconBtn size="sm" tone="primary" icon={<Pencil size={14} />} label="编辑" onClick={() => handleEdit(d)} />
+                    <IconBtn size="sm" tone="danger" icon={<Trash2 size={14} />} label="删除" onClick={() => handleDelete(d.id)} />
                   </div>
                 </td>
               </tr>
