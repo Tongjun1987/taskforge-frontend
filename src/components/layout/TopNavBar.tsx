@@ -47,12 +47,12 @@ const TOP_MENUS = [
       },
       {
         label: "生产运行监管",
-        desc: "全景看板 · 运行监控 · 资源调度 · 异常告警 · 运营报表",
+        desc: "全景看板 · 运行监控 · 计算资源调度 · 异常告警 · 运营报表",
         icon: Activity,
         children: [
           { label: "生产全景看板", href: "/task-modeling?view=overview", view: "overview", badge: null },
           { label: "实时运行监控", href: "/task-modeling?view=monitor", view: "monitor", badge: null },
-          { label: "资源调度", href: "/task-modeling?view=resource", view: "resource", badge: null },
+          { label: "计算资源调度", href: "/task-modeling?view=resource", view: "resource", badge: null },
           { label: "异常告警分析", href: "/task-modeling?view=alert", view: "alert", badge: null },
           { label: "生产运营报表", href: "/task-modeling?view=report", view: "report", badge: null },
         ],

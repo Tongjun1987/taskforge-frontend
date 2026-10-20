@@ -44,7 +44,6 @@ import {
   TASK_OUTPUT_TARGETS,
   TASK_PIPELINES,
   TASK_RUNS,
-  KPI,
 } from "@/components/production/mock";
 import RulesView from "@/components/production/RulesView";
 import TrackingView from "@/components/production/TrackingView";
@@ -3909,12 +3908,12 @@ const MODULES: ProdModule[] = [
   {
     key: "ops",
     label: "生产运行监管",
-    desc: "全景看板 · 运行监控 · 资源调度 · 异常告警 · 运营报表",
+    desc: "全景看板 · 运行监控 · 计算资源调度 · 异常告警 · 运营报表",
     icon: Activity,
     children: [
       { key: "overview", label: "生产全景看板" },
       { key: "monitor", label: "实时运行监控" },
-      { key: "resource", label: "资源调度" },
+      { key: "resource", label: "计算资源调度" },
       { key: "alert", label: "异常告警分析" },
       { key: "report", label: "生产运营报表" },
     ],
@@ -3964,13 +3963,6 @@ function ProductionControlCenter() {
     if (k === "alert") return <AlertView />;
     return <ReportView />;
   };
-
-  const globalStats = [
-    { k: "在行产线", v: `${KPI.runningPipelines}/${KPI.totalPipelines}`, tone: "#4f46e5" },
-    { k: "今日产出", v: `${KPI.todayOutput} 万条`, tone: "#16a34a" },
-    { k: "资源利用率", v: `${KPI.resourceUsage}%`, tone: "#0ea5e9" },
-    { k: "告警", v: `${KPI.alertCount} 条`, tone: "#dc2626" },
-  ];
 
   return (
     <div
@@ -4028,17 +4020,7 @@ function ProductionControlCenter() {
 
         <div style={{ flex: 1 }} />
 
-        {/* 产线模板库是资产库视角；生产运行监管各页自带指标 —— 均不再展示页头全局统计 */}
-        {view !== "templates" && activeModule.key !== "ops" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {globalStats.map((s) => (
-              <div key={s.k} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                <span style={{ fontSize: 11, color: "#94a3b8" }}>{s.k}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: s.tone }}>{s.v}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* 页头不再展示「在行产线/今日产出/资源利用率/告警」全局统计，各页自带业务指标 */}
 
         <button
           onClick={() => {

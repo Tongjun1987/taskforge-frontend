@@ -1059,7 +1059,7 @@ export default function PipelineView({ tab = "editor" }: { tab?: "editor" | "tem
               </button>
             </div>
             <p style={{ fontSize: 11, color: C.sub, margin: "0 0 14px", lineHeight: 1.7 }}>
-              这里只声明产线运行所需的资源规格，实际分配与排队由「生产运行监管 · 资源调度」在运行时决定。
+              这里只声明产线运行所需的资源规格，实际分配与排队由「生产运行监管 · 计算资源调度」在运行时决定。
             </p>
             <Grid cols={2} gap={10}>
               {[
