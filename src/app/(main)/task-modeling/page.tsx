@@ -4028,8 +4028,8 @@ function ProductionControlCenter() {
 
         <div style={{ flex: 1 }} />
 
-        {/* 产线模板库是资产库视角，全局产线/产出/告警指标与该页无关，此处不展示 */}
-        {view !== "templates" && (
+        {/* 产线模板库是资产库视角；生产运行监管各页自带指标 —— 均不再展示页头全局统计 */}
+        {view !== "templates" && activeModule.key !== "ops" && (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {globalStats.map((s) => (
               <div key={s.k} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>

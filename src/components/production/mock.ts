@@ -263,11 +263,35 @@ export const REPORT_TEMPLATES = [
   { id: "rt-4", name: "成本核算表", desc: "单样本成本、算力成本、人工成本、预算执行率", icon: "coin", tone: "#f59e0b" },
 ];
 
+// 报表：period = 周期类型（每日/每周/每月），periodValue = 所属周期（具体日期 / 起止日期 / 年月）
 export const REPORTS = [
-  { id: "RP-20261009-01", name: "生产运营周报（10-03 ~ 10-09）", type: "生产运营报表", period: "每周", generated: "2026-10-10 08:00", status: "已生成", size: "1.2 MB" },
-  { id: "RP-20261009-02", name: "资源利用日报（10-09）", type: "资源利用率报表", period: "每日", generated: "2026-10-10 07:30", status: "已生成", size: "386 KB" },
-  { id: "RP-20261008-03", name: "质量趋势月报（2026-09）", type: "质量趋势报表", period: "每月", generated: "2026-10-01 09:00", status: "已生成", size: "2.4 MB" },
-  { id: "RP-20261010-04", name: "成本核算报表（2026-09）", type: "成本核算表", period: "每月", generated: "2026-10-10 13:00", status: "生成中", size: "--" },
+  // ---- 日报 ----
+  { id: "RP-20261020-01", name: "生产运营日报", type: "生产运营报表", period: "每日", periodValue: "2026-10-20", generated: "2026-10-20 08:00", status: "已生成", size: "1.1 MB" },
+  { id: "RP-20261020-02", name: "资源利用日报", type: "资源利用率报表", period: "每日", periodValue: "2026-10-20", generated: "2026-10-20 07:30", status: "已生成", size: "392 KB" },
+  { id: "RP-20261020-03", name: "质量趋势日报", type: "质量趋势报表", period: "每日", periodValue: "2026-10-20", generated: "2026-10-20 08:10", status: "已生成", size: "860 KB" },
+  { id: "RP-20261020-04", name: "成本核算日报", type: "成本核算表", period: "每日", periodValue: "2026-10-20", generated: "2026-10-20 09:00", status: "已生成", size: "420 KB" },
+  { id: "RP-20261019-01", name: "生产运营日报", type: "生产运营报表", period: "每日", periodValue: "2026-10-19", generated: "2026-10-19 08:00", status: "已生成", size: "1.0 MB" },
+  { id: "RP-20261019-02", name: "资源利用日报", type: "资源利用率报表", period: "每日", periodValue: "2026-10-19", generated: "2026-10-19 07:30", status: "已生成", size: "376 KB" },
+  { id: "RP-20261019-03", name: "质量趋势日报", type: "质量趋势报表", period: "每日", periodValue: "2026-10-19", generated: "2026-10-19 08:10", status: "已生成", size: "842 KB" },
+  { id: "RP-20261019-04", name: "成本核算日报", type: "成本核算表", period: "每日", periodValue: "2026-10-19", generated: "2026-10-19 09:00", status: "已生成", size: "408 KB" },
+  { id: "RP-20261018-01", name: "生产运营日报", type: "生产运营报表", period: "每日", periodValue: "2026-10-18", generated: "2026-10-18 08:00", status: "已生成", size: "0.9 MB" },
+  { id: "RP-20261018-02", name: "资源利用日报", type: "资源利用率报表", period: "每日", periodValue: "2026-10-18", generated: "2026-10-18 07:30", status: "已生成", size: "365 KB" },
+  { id: "RP-20261018-03", name: "质量趋势日报", type: "质量趋势报表", period: "每日", periodValue: "2026-10-18", generated: "2026-10-18 08:10", status: "已生成", size: "815 KB" },
+  { id: "RP-20261018-04", name: "成本核算日报", type: "成本核算表", period: "每日", periodValue: "2026-10-18", generated: "2026-10-18 09:00", status: "已生成", size: "402 KB" },
+  // ---- 周报 ----
+  { id: "RP-20261019-11", name: "生产运营周报", type: "生产运营报表", period: "每周", periodValue: "2026-10-12 ~ 2026-10-18", generated: "2026-10-19 08:00", status: "已生成", size: "1.6 MB" },
+  { id: "RP-20261019-12", name: "资源利用周报", type: "资源利用率报表", period: "每周", periodValue: "2026-10-12 ~ 2026-10-18", generated: "2026-10-19 07:40", status: "已生成", size: "780 KB" },
+  { id: "RP-20261019-13", name: "质量趋势周报", type: "质量趋势报表", period: "每周", periodValue: "2026-10-12 ~ 2026-10-18", generated: "2026-10-19 08:20", status: "生成中", size: "--" },
+  { id: "RP-20261012-11", name: "生产运营周报", type: "生产运营报表", period: "每周", periodValue: "2026-10-05 ~ 2026-10-11", generated: "2026-10-12 08:00", status: "已生成", size: "1.5 MB" },
+  { id: "RP-20261012-12", name: "资源利用周报", type: "资源利用率报表", period: "每周", periodValue: "2026-10-05 ~ 2026-10-11", generated: "2026-10-12 07:40", status: "已生成", size: "742 KB" },
+  { id: "RP-20261012-13", name: "质量趋势周报", type: "质量趋势报表", period: "每周", periodValue: "2026-10-05 ~ 2026-10-11", generated: "2026-10-12 08:20", status: "已生成", size: "1.2 MB" },
+  // ---- 月报 ----
+  { id: "RP-20261001-21", name: "生产运营月报", type: "生产运营报表", period: "每月", periodValue: "2026-09", generated: "2026-10-01 08:30", status: "已生成", size: "3.2 MB" },
+  { id: "RP-20261001-22", name: "质量趋势月报", type: "质量趋势报表", period: "每月", periodValue: "2026-09", generated: "2026-10-01 09:00", status: "已生成", size: "2.4 MB" },
+  { id: "RP-20261001-23", name: "成本核算月报", type: "成本核算表", period: "每月", periodValue: "2026-09", generated: "2026-10-01 09:20", status: "已生成", size: "1.9 MB" },
+  { id: "RP-20260901-21", name: "生产运营月报", type: "生产运营报表", period: "每月", periodValue: "2026-08", generated: "2026-09-01 08:30", status: "已生成", size: "3.0 MB" },
+  { id: "RP-20260901-22", name: "质量趋势月报", type: "质量趋势报表", period: "每月", periodValue: "2026-08", generated: "2026-09-01 09:00", status: "已生成", size: "2.2 MB" },
+  { id: "RP-20260901-23", name: "成本核算月报", type: "成本核算表", period: "每月", periodValue: "2026-08", generated: "2026-09-01 09:20", status: "已生成", size: "1.8 MB" },
 ];
 
 export const REPORT_SCHEDULES = [
