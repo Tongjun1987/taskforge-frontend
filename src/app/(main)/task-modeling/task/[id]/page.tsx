@@ -1,12 +1,10 @@
 import { Suspense } from "react";
 import TaskDetailClient from "./TaskDetailClient";
+import { TASK_IDS } from "@/components/production/taskKeys";
 
+// 静态导出：必须预生成所有任务详情页，否则线上深链 404（dev 模式按需渲染所以看不出来）
 export async function generateStaticParams() {
-  return [
-    { id: 'scene-1' },
-    { id: 'scene-2' },
-    { id: 'scene-3' },
-  ];
+  return TASK_IDS.map((id) => ({ id }));
 }
 
 export default function TaskDetailPage() {
