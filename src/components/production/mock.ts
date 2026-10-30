@@ -51,13 +51,21 @@ export const PIPELINES: {
   type: string;
   status: PipelineStatus;
   business: string;
+  version: string;
+  updatedAt: string;
   progress: number;
   currentNode: string;
   output: number;
   cycle: string;
   usage: number;
   alerts: number;
-  nodes: { name: string; seconds: number; status: "done" | "running" | "waiting" | "error" }[];
+  nodes: {
+    name: string;
+    seconds: number;
+    status: "done" | "running" | "waiting" | "error";
+    ops: number;
+    rules: number;
+  }[];
 }[] = [
   {
     id: "PL-1042",
@@ -65,6 +73,8 @@ export const PIPELINES: {
     type: "专家标注类",
     status: "running",
     business: "交通出行",
+    version: "v2.3",
+    updatedAt: "2026-10-09 18:20",
     progress: 72,
     currentNode: "专家标注",
     output: 28.6,
@@ -72,12 +82,12 @@ export const PIPELINES: {
     usage: 76,
     alerts: 1,
     nodes: [
-      { name: "数据接入", seconds: 42, status: "done" },
-      { name: "数据清洗", seconds: 68, status: "done" },
-      { name: "数据增强", seconds: 35, status: "done" },
-      { name: "专家标注", seconds: 186, status: "running" },
-      { name: "质量检验", seconds: 0, status: "waiting" },
-      { name: "数据发布", seconds: 0, status: "waiting" },
+      { name: "数据接入", seconds: 42, status: "done", ops: 4, rules: 3 },
+      { name: "数据清洗", seconds: 68, status: "done", ops: 7, rules: 5 },
+      { name: "数据增强", seconds: 35, status: "done", ops: 6, rules: 4 },
+      { name: "专家标注", seconds: 186, status: "running", ops: 3, rules: 8 },
+      { name: "质量检验", seconds: 0, status: "waiting", ops: 5, rules: 6 },
+      { name: "数据发布", seconds: 0, status: "waiting", ops: 2, rules: 3 },
     ],
   },
   {
@@ -86,6 +96,8 @@ export const PIPELINES: {
     type: "智能标注类",
     status: "running",
     business: "医疗健康",
+    version: "v1.8",
+    updatedAt: "2026-10-08 11:05",
     progress: 54,
     currentNode: "智能预标注",
     output: 12.4,
@@ -93,11 +105,11 @@ export const PIPELINES: {
     usage: 82,
     alerts: 2,
     nodes: [
-      { name: "数据接入", seconds: 96, status: "done" },
-      { name: "影像清洗", seconds: 74, status: "done" },
-      { name: "智能预标注", seconds: 214, status: "running" },
-      { name: "专家复核", seconds: 0, status: "waiting" },
-      { name: "质量检验", seconds: 0, status: "waiting" },
+      { name: "数据接入", seconds: 96, status: "done", ops: 4, rules: 3 },
+      { name: "影像清洗", seconds: 74, status: "done", ops: 6, rules: 4 },
+      { name: "智能预标注", seconds: 214, status: "running", ops: 3, rules: 6 },
+      { name: "专家复核", seconds: 0, status: "waiting", ops: 2, rules: 5 },
+      { name: "质量检验", seconds: 0, status: "waiting", ops: 5, rules: 6 },
     ],
   },
   {
@@ -106,6 +118,8 @@ export const PIPELINES: {
     type: "多模态融合类",
     status: "running",
     business: "自然资源",
+    version: "v3.1",
+    updatedAt: "2026-10-07 16:40",
     progress: 88,
     currentNode: "质量检验",
     output: 21.8,
@@ -113,10 +127,10 @@ export const PIPELINES: {
     usage: 64,
     alerts: 0,
     nodes: [
-      { name: "多源接入", seconds: 58, status: "done" },
-      { name: "点云清洗", seconds: 46, status: "done" },
-      { name: "多模态融合", seconds: 132, status: "done" },
-      { name: "质量检验", seconds: 39, status: "running" },
+      { name: "多源接入", seconds: 58, status: "done", ops: 5, rules: 3 },
+      { name: "点云清洗", seconds: 46, status: "done", ops: 6, rules: 4 },
+      { name: "多模态融合", seconds: 132, status: "done", ops: 4, rules: 5 },
+      { name: "质量检验", seconds: 39, status: "running", ops: 5, rules: 6 },
     ],
   },
   {
@@ -125,6 +139,8 @@ export const PIPELINES: {
     type: "数据清洗类",
     status: "queued",
     business: "交通出行",
+    version: "v1.2",
+    updatedAt: "2026-10-05 09:30",
     progress: 0,
     currentNode: "排队中",
     output: 0,
@@ -132,8 +148,10 @@ export const PIPELINES: {
     usage: 0,
     alerts: 0,
     nodes: [
-      { name: "文本清洗", seconds: 0, status: "waiting" },
-      { name: "文本增强", seconds: 0, status: "waiting" },
+      { name: "文本清洗", seconds: 0, status: "waiting", ops: 6, rules: 5 },
+      { name: "文本增强", seconds: 0, status: "waiting", ops: 5, rules: 4 },
+      { name: "质量检验", seconds: 0, status: "waiting", ops: 5, rules: 6 },
+      { name: "数据发布", seconds: 0, status: "waiting", ops: 2, rules: 3 },
     ],
   },
   {
@@ -142,6 +160,8 @@ export const PIPELINES: {
     type: "专家标注类",
     status: "idle",
     business: "自然资源",
+    version: "v2.0",
+    updatedAt: "2026-10-06 14:15",
     progress: 0,
     currentNode: "待启动",
     output: 0,
@@ -149,8 +169,12 @@ export const PIPELINES: {
     usage: 0,
     alerts: 0,
     nodes: [
-      { name: "数据接入", seconds: 0, status: "waiting" },
-      { name: "专家标注", seconds: 0, status: "waiting" },
+      { name: "数据接入", seconds: 0, status: "waiting", ops: 4, rules: 3 },
+      { name: "影像配准", seconds: 0, status: "waiting", ops: 5, rules: 4 },
+      { name: "影像切片", seconds: 0, status: "waiting", ops: 4, rules: 3 },
+      { name: "专家标注", seconds: 0, status: "waiting", ops: 3, rules: 8 },
+      { name: "质量检验", seconds: 0, status: "waiting", ops: 5, rules: 6 },
+      { name: "数据发布", seconds: 0, status: "waiting", ops: 2, rules: 3 },
     ],
   },
   {
@@ -159,6 +183,8 @@ export const PIPELINES: {
     type: "智能标注类",
     status: "error",
     business: "交通出行",
+    version: "v1.5",
+    updatedAt: "2026-10-09 20:10",
     progress: 36,
     currentNode: "语音切分",
     output: 4.2,
@@ -166,9 +192,9 @@ export const PIPELINES: {
     usage: 12,
     alerts: 4,
     nodes: [
-      { name: "数据接入", seconds: 31, status: "done" },
-      { name: "语音切分", seconds: 22, status: "error" },
-      { name: "转写标注", seconds: 0, status: "waiting" },
+      { name: "数据接入", seconds: 31, status: "done", ops: 4, rules: 3 },
+      { name: "语音切分", seconds: 22, status: "error", ops: 5, rules: 4 },
+      { name: "转写标注", seconds: 0, status: "waiting", ops: 3, rules: 7 },
     ],
   },
 ];
@@ -737,7 +763,7 @@ export const TASK_RUNS: {
     status: "failed",
     progress: 82,
     nodeNow: "质量检验",
-    nodesDone: 5,
+    nodesDone: 4,
     nodesTotal: 6,
     elapsed: "4 小时 51 分",
     cpu: 28,
@@ -746,6 +772,19 @@ export const TASK_RUNS: {
     startedAt: "2026-10-09 21:30",
   },
 ];
+
+// 运行批次 ↔ 产线快照映射
+// 批次一旦产生即冻结在当时那一版产线上，产线后续改版不影响历史批次；
+// PIPELINES.version 是产线「当前」版本，这里记录该批次「当时」使用的版本。
+export const RUN_PIPELINE: Record<string, { pipelineId: string; version: string }> = {
+  "RUN-2001": { pipelineId: "PL-1042", version: "v2.3" },
+  "RUN-2002": { pipelineId: "PL-1042", version: "v2.2" },
+  "RUN-2003": { pipelineId: "PL-1043", version: "v1.8" },
+  "RUN-2004": { pipelineId: "PL-1044", version: "v3.1" },
+  "RUN-2005": { pipelineId: "PL-1045", version: "v1.2" },
+  "RUN-2006": { pipelineId: "PL-1047", version: "v1.5" },
+  "RUN-2007": { pipelineId: "PL-1046", version: "v2.0" },
+};
 
 // ===== 4.2.2 单个任务下的产线（一个任务可装配多条产线）=====
 export const TASK_PIPELINES: {

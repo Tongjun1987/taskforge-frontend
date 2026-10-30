@@ -811,7 +811,9 @@ export const ALERT_LEVEL: Record<string, { label: string; tone: string; soft: st
 export function fmtSec(s: number) {
   if (!s) return "--";
   if (s < 60) return s + "s";
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
+  if (h) return m ? h + "h " + m + "m" : h + "h";
   return r ? m + "m " + r + "s" : m + "m";
 }

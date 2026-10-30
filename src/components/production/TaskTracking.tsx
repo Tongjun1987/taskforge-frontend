@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { C, Tag, Bar, Btn, LineChart, Table, Dot, fmtSec, Kv, Metric, Panel } from "./ui";
 import { TASK_TRACKING, TASK_RUNS, RUN_STATUS, type RunStatus } from "./mock";
+import { buildSnapshot } from "./runSnapshot";
 
 const RES_COLORS = { cpu: C.primary, gpu: C.purple, ram: C.info };
 
@@ -55,8 +56,15 @@ export default function TaskTrackingPanel({ runId }: { runId: string }) {
   }
 
   const st = RUN_STATUS[state];
-  const maxSec = Math.max(...TASK_TRACKING.nodeCost.map((n) => n.seconds), 1);
-  const totalSec = TASK_TRACKING.nodeCost.reduce((s, n) => s + n.seconds, 0);
+  // 节点耗时与「产线快照」tab 同源，保证两个 tab 看到的节点名与秒数完全一致
+  const snap = buildSnapshot(run.id);
+  const costBars = snap
+    ? snap.nodes.map((n) => ({ name: n.name, seconds: n.seconds, tone: n.tone }))
+    : TASK_TRACKING.nodeCost;
+  const doneN = snap ? snap.totals.done : run.nodesDone;
+  const totalN = snap ? snap.totals.nodes : run.nodesTotal;
+  const maxSec = Math.max(...costBars.map((n) => n.seconds), 1);
+  const totalSec = costBars.reduce((s, n) => s + n.seconds, 0);
   const pct = state === "success" ? 100 : state === "queued" ? 0 : run.progress;
 
   return (
@@ -114,7 +122,7 @@ export default function TaskTrackingPanel({ runId }: { runId: string }) {
           <span>
             节点进度{" "}
             <b style={{ color: C.text }}>
-              {run.nodesDone}/{run.nodesTotal}
+              {doneN}/{totalN}
             </b>
           </span>
           <span>
@@ -132,7 +140,7 @@ export default function TaskTrackingPanel({ runId }: { runId: string }) {
         <Metric
           icon={<Activity size={15} />}
           label="已完成节点"
-          value={`${run.nodesDone}/${run.nodesTotal}`}
+          value={`${doneN}/${totalN}`}
           unit="个"
           tone={C.info}
         />
@@ -142,9 +150,9 @@ export default function TaskTrackingPanel({ runId }: { runId: string }) {
 
       {/* 节点耗时 + 资源曲线 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
-        <Panel title="节点耗时" desc="各工序节点实际耗时（秒）">
+        <Panel title="节点耗时" desc={snap ? `按 ${snap.pipe.id} ${snap.version} 实际执行` : "各工序节点实际耗时（秒）"}>
           <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-            {TASK_TRACKING.nodeCost.map((n) => (
+            {costBars.map((n) => (
               <div key={n.name}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, marginBottom: 5 }}>
                   <span style={{ color: C.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.name}</span>

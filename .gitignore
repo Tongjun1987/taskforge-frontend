@@ -9,6 +9,7 @@
 # next.js
 /.next/
 /.next-export/
+/.next-build/
 /out/
 build_error.log
 build_output.log

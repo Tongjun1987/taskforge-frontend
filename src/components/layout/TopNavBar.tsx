@@ -9,7 +9,7 @@ import {
   Sparkles, Users, Star, FileText, CheckCircle2,
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
   Wrench, ClipboardList, Layers3, ArrowUpDown, TrendingUp,
-  History, Route, Upload, Cloud, Brain, Workflow
+  History, Route, Upload, Cloud, Brain, Workflow, ShieldCheck
 } from "lucide-react";
 
 // ============================================================
@@ -65,7 +65,7 @@ const TOP_MENUS = [
     icon: Database,
     href: "/data-production",
     color: "#8b5cf6",
-    desc: "数据采集 · 数据处理 · 数据标注 · 数据管理",
+    desc: "数据采集 · 数据处理 · 数据标注 · 数据质检 · 数据管理",
     subItems: [
       // 数据接入（二级菜单，带三级子菜单）
       {
@@ -98,11 +98,21 @@ const TOP_MENUS = [
         ],
       },
       {
+        label: "数据质检管理",
+        desc: "质量规则配置 · 智能质量检测 · 检测报告 · 问题工单",
+        icon: ShieldCheck,
+        children: [
+          { label: "质量规则配置", href: "/quality", view: null, badge: null },
+          { label: "智能质量检测", href: "/quality?view=detect", view: "detect", badge: "AI", color: "#10b981" },
+          { label: "质量检测报告", href: "/quality?view=report", view: "report", prefix: "/quality/report", badge: null },
+          { label: "质量问题工单", href: "/quality?view=ticket", view: "ticket", prefix: "/quality/ticket", badge: null },
+        ],
+      },
+      {
         label: "数据管理",
-        desc: "数据集划分 · 发布 · 测评 · 跨项目共享",
+        desc: "数据集划分 · 发布 · 跨项目共享",
         icon: Shield,
         children: [
-          { label: "数据质检", href: "/quality", badge: null },
           { label: "数据集管理", href: "/data-asset/dataset", badge: null },
         ],
       },
