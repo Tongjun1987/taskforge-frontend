@@ -9,7 +9,8 @@ import {
   Sparkles, Users, Star, FileText, CheckCircle2,
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
   Wrench, ClipboardList, Layers3, ArrowUpDown, TrendingUp,
-  History, Route, Upload, Cloud, Brain, Workflow, ShieldCheck
+  History, Route, Upload, Cloud, Brain, Workflow, ShieldCheck,
+  LayoutGrid, ChartBar, Share2, Library, Package
 } from "lucide-react";
 
 // ============================================================
@@ -65,7 +66,7 @@ const TOP_MENUS = [
     icon: Database,
     href: "/data-production",
     color: "#8b5cf6",
-    desc: "数据采集 · 数据处理 · 数据标注 · 数据质检 · 数据管理",
+    desc: "数据采集 · 数据处理 · 数据标注 · 数据质检",
     subItems: [
       // 数据接入（二级菜单，带三级子菜单）
       {
@@ -90,11 +91,12 @@ const TOP_MENUS = [
       },
       {
         label: "数据标注",
-        desc: "专家标注 · 智能标注",
+        desc: "专家标注 · 智能标注 · 语料库管理",
         icon: Tag,
         children: [
           { label: "专家标注", href: "/annotation", badge: null },
           { label: "智能标注", href: "/smart-annotation", badge: "AI", color: "#10b981" },
+          { label: "语料库管理", href: "/corpus", badge: null },
         ],
       },
       {
@@ -106,14 +108,6 @@ const TOP_MENUS = [
           { label: "智能质量检测", href: "/quality?view=detect", view: "detect", badge: "AI", color: "#10b981" },
           { label: "质量检测报告", href: "/quality?view=report", view: "report", prefix: "/quality/report", badge: null },
           { label: "质量问题工单", href: "/quality?view=ticket", view: "ticket", prefix: "/quality/ticket", badge: null },
-        ],
-      },
-      {
-        label: "数据管理",
-        desc: "数据集划分 · 发布 · 跨项目共享",
-        icon: Shield,
-        children: [
-          { label: "数据集管理", href: "/data-asset/dataset", badge: null },
         ],
       },
     ],
@@ -164,32 +158,69 @@ const TOP_MENUS = [
       },
     ],
   },
-  // ── 数模服务中心 ──────────────────────────────
+  // ── 数据发布中心（原数模服务中心） ──────────────
   {
-    key: "service-center",
-    label: "数模服务中心",
-    icon: Cloud,
-    href: "/service-center",
+    key: "publish-center",
+    label: "数据发布中心",
+    icon: Package,
+    href: "/data-publish",
     color: "#10b981",
-    desc: "模型服务 · 数据集服务",
+    desc: "数据集管理 · 封装模板 · 数据集服务",
     subItems: [
       {
-        label: "模型服务",
-        desc: "发现和使用 AI 模型",
-        icon: Brain,
-        children: [
-          { label: "模型服务列表", href: "/service/models", badge: null },
-        ],
+        label: "数据集管理",
+        desc: "数据集清单与详情，内含质量报告 / 血缘 / 版本 / 权限",
+        icon: FolderOpen,
+        href: "/data-publish",
+        prefix: "/data-publish/dataset",
+        badge: null,
       },
+      {
+        label: "封装模板",
+        desc: "按行业 / 场景 / 类型预置标准化封装规范",
+        icon: Package,
+        href: "/data-publish/templates",
+        badge: null,
+      },
+      { divider: true },
       {
         label: "数据集服务",
         desc: "高质量数据集发现与使用",
         icon: Database,
-        children: [
-          { label: "数据集服务列表", href: "/service/datasets", badge: null },
-        ],
+        href: "/service/datasets",
+        badge: null,
       },
     ],
+  },
+  // ── 算力管理中心（一级入口，无二级菜单） ──────────────
+  {
+    key: "compute-center",
+    label: "算力管理中心",
+    icon: LayoutGrid,
+    href: "/compute-center",
+    color: "#0ea5e9",
+    desc: "算力资源池 · 配额与排队 · 卡时计量",
+    subItems: [],
+  },
+  // ── 运营管理中心 ──────────────────────────────
+  {
+    key: "ops-center",
+    label: "运营管理中心",
+    icon: ChartBar,
+    href: "/ops-center",
+    color: "#f59e0b",
+    desc: "租户经营 · 计费账单 · 运营指标",
+    subItems: [],
+  },
+  // ── 系统运行中心 ──────────────────────────────
+  {
+    key: "system-center",
+    label: "系统运行中心",
+    icon: Share2,
+    href: "/system-center",
+    color: "#10b981",
+    desc: "服务健康 · 集群节点 · 告警值守",
+    subItems: [],
   },
 ];
 
@@ -250,21 +281,21 @@ function SubMenuPanel({ item, onClose }: { item: any; onClose: () => void }) {
                 gap: 10,
                 padding: "9px 14px",
                 textDecoration: "none",
-                color: isActive(sub.href) ? item.color : "#334155",
-                background: isActive(sub.href) ? `${item.color}12` : "transparent",
-                borderLeft: isActive(sub.href) ? `3px solid ${item.color}` : "3px solid transparent",
+                color: isActive(sub.href, sub.view, sub.prefix) ? item.color : "#334155",
+                background: isActive(sub.href, sub.view, sub.prefix) ? `${item.color}12` : "transparent",
+                borderLeft: isActive(sub.href, sub.view, sub.prefix) ? `3px solid ${item.color}` : "3px solid transparent",
                 fontSize: 13,
-                fontWeight: isActive(sub.href) ? 600 : 400,
+                fontWeight: isActive(sub.href, sub.view, sub.prefix) ? 600 : 400,
                 transition: "all 0.1s",
               }}
               onMouseEnter={e => {
-                if (!isActive(sub.href)) {
+                if (!isActive(sub.href, sub.view, sub.prefix)) {
                   (e.currentTarget as HTMLElement).style.background = "#f1f5f9";
                   (e.currentTarget as HTMLElement).style.color = "#1e293b";
                 }
               }}
               onMouseLeave={e => {
-                if (!isActive(sub.href)) {
+                if (!isActive(sub.href, sub.view, sub.prefix)) {
                   (e.currentTarget as HTMLElement).style.background = "transparent";
                   (e.currentTarget as HTMLElement).style.color = "#334155";
                 }
@@ -378,7 +409,8 @@ export function TopNavBar() {
         pathname.startsWith("/smart-annotation") || pathname.startsWith("/multi-annotator") ||
         pathname.startsWith("/quality") || pathname.startsWith("/data-ops") ||
         pathname.startsWith("/data-preprocess") || pathname.startsWith("/data-augment") ||
-        pathname.startsWith("/data-split") || pathname === "/data-production")
+        pathname.startsWith("/data-split") || pathname.startsWith("/corpus") ||
+        pathname === "/data-production")
       return "data-production";
     if (pathname.startsWith("/model-training") || pathname.startsWith("/model-evaluation") ||
         pathname.startsWith("/model-testing") || pathname.startsWith("/model-eval") ||
@@ -386,8 +418,11 @@ export function TopNavBar() {
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
-    if (pathname.startsWith("/service") || pathname === "/service-center")
-      return "service-center";
+    if (pathname.startsWith("/data-publish") || pathname.startsWith("/service") || pathname === "/service-center")
+      return "publish-center";
+    if (pathname.startsWith("/compute-center")) return "compute-center";
+    if (pathname.startsWith("/ops-center")) return "ops-center";
+    if (pathname.startsWith("/system-center")) return "system-center";
     return null;
   };
 
@@ -642,7 +677,7 @@ function menuColor(key: string | null) {
     "task-modeling": "#3b82f6",
     "data-production": "#8b5cf6",
     "model-production": "#f59e0b",
-    "service-center": "#10b981",
+    "publish-center": "#10b981",
   };
   return key ? (map[key] || "#3b82f6") : "#3b82f6";
 }
@@ -683,7 +718,8 @@ export function Sidebar() {
         pathname.startsWith("/smart-annotation") || pathname.startsWith("/multi-annotator") ||
         pathname.startsWith("/quality") || pathname.startsWith("/data-ops") ||
         pathname.startsWith("/data-preprocess") || pathname.startsWith("/data-augment") ||
-        pathname.startsWith("/data-split") || pathname === "/data-production")
+        pathname.startsWith("/data-split") || pathname.startsWith("/corpus") ||
+        pathname === "/data-production")
       return "data-production";
     if (pathname.startsWith("/model-training") || pathname.startsWith("/model-evaluation") ||
         pathname.startsWith("/model-testing") || pathname.startsWith("/model-eval") ||
@@ -691,8 +727,8 @@ export function Sidebar() {
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
-    if (pathname.startsWith("/service") || pathname === "/service-center")
-      return "service-center";
+    if (pathname.startsWith("/data-publish") || pathname.startsWith("/service") || pathname === "/service-center")
+      return "publish-center";
     return null;
   })();
 
@@ -752,8 +788,8 @@ export function Sidebar() {
       <nav style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
         {subItems.filter((sub: any) => !sub.divider).map((sub: any) => (
           <div key={sub.label}>
-            {/* 分组标题 */}
-            <div style={{
+            {/* 分组标题（直接链接项本身即标题，不再重复渲染） */}
+            {(sub.children || !sub.href) && <div style={{
               padding: collapsed ? "6px 8px" : "6px 12px",
               display: "flex",
               alignItems: "center",
@@ -773,7 +809,7 @@ export function Sidebar() {
                 </>
               )}
               {collapsed && <sub.icon size={13} style={{ color: activeColor }} />}
-            </div>
+            </div>}
 
             {/* 子项 */}
             {(sub.children || []).map((child: any) => {
@@ -838,22 +874,22 @@ export function Sidebar() {
                   margin: "1px 6px",
                   borderRadius: 6,
                   textDecoration: "none",
-                  color: isActive(sub.href) ? activeColor : "#64748b",
-                  background: isActive(sub.href) ? `${activeColor}12` : "transparent",
-                  borderLeft: isActive(sub.href) ? `3px solid ${activeColor}` : "3px solid transparent",
+                  color: isActive(sub.href, sub.view, sub.prefix) ? activeColor : "#64748b",
+                  background: isActive(sub.href, sub.view, sub.prefix) ? `${activeColor}12` : "transparent",
+                  borderLeft: isActive(sub.href, sub.view, sub.prefix) ? `3px solid ${activeColor}` : "3px solid transparent",
                   fontSize: 12,
-                  fontWeight: isActive(sub.href) ? 600 : 400,
+                  fontWeight: isActive(sub.href, sub.view, sub.prefix) ? 600 : 400,
                   justifyContent: collapsed ? "center" : "flex-start",
                   transition: "all 0.1s",
                 }}
                 onMouseEnter={e => {
-                  if (!isActive(sub.href)) {
+                  if (!isActive(sub.href, sub.view, sub.prefix)) {
                     (e.currentTarget as HTMLElement).style.background = hoverBg;
                     (e.currentTarget as HTMLElement).style.color = "#334155";
                   }
                 }}
                 onMouseLeave={e => {
-                  if (!isActive(sub.href)) {
+                  if (!isActive(sub.href, sub.view, sub.prefix)) {
                     (e.currentTarget as HTMLElement).style.background = "transparent";
                     (e.currentTarget as HTMLElement).style.color = "#64748b";
                   }
@@ -892,8 +928,8 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
         pathname.startsWith("/agent-management") || pathname === "/model-production")
       return "model-production";
-    if (pathname.startsWith("/service") || pathname === "/service-center")
-      return "service-center";
+    if (pathname.startsWith("/data-publish") || pathname.startsWith("/service") || pathname === "/service-center")
+      return "publish-center";
     return null;
   })();
 
