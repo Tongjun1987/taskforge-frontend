@@ -423,6 +423,71 @@ export type FinetuneExp = {
 
 export const FINETUNE_EXPS: FinetuneExp[] = [
   {
+    id: "FT-2026-010",
+    name: "医疗问答指令微调 · 6:4 配方（QLoRA 4bit）",
+    baseModel: "Qwen2.5-7B-Instruct",
+    method: "QLoRA",
+    mix: [
+      { datasetId: "DS-2026-109", ratio: 60 },
+      { datasetId: "DS-2026-104", ratio: 40 },
+    ],
+    status: "已完成",
+    progress: 100,
+    gpu: "2 × A100 80G",
+    startedAt: "2026-11-06 10:20",
+    duration: "3h 02m",
+    tasks: [
+      { task: "医疗问答准确率", before: 62.4, after: 77.4 },
+      { task: "病历摘要 ROUGE-L", before: 41.2, after: 48.5 },
+      { task: "意图识别 F1", before: 84.1, after: 87.9 },
+      { task: "通用指令跟随", before: 88.6, after: 87.4 },
+    ],
+    domain: [
+      { metric: "医学术语命中率", before: 71.3, after: 87.9, note: "ICD-10 术语表抽样 800 条" },
+      { metric: "领域知识问答", before: 58.2, after: 72.6, note: "自建医疗知识测试集 500 题" },
+      { metric: "指南引用准确率", before: 44.6, after: 64.2, note: "对照临床指南条目" },
+    ],
+    forget: 1.2,
+    loss: [2.48, 2.15, 1.91, 1.73, 1.59, 1.5, 1.43, 1.38, 1.34, 1.31, 1.29, 1.28],
+    conclusion:
+      "与 FT-2026-008 同配方同轮次：下游提升低约 1.0pt、耗时省 1h34m、显存降至 1/3，适合算力受限时的批量配方筛选。",
+    feedback: [
+      { target: "微调策略", text: "QLoRA 4bit 可作为 LoRA 的低成本替代方案，建议纳入场景推荐策略组合", href: "/model-finetune" },
+      { target: "数据标注质量", text: "4bit 量化下长答案质量衰减更明显，建议对 >200 字的样本补充精修", href: "/quality" },
+    ],
+  },
+  {
+    id: "FT-2026-009",
+    name: "医疗问答指令微调 · 8:2 配方",
+    baseModel: "Qwen2.5-7B-Instruct",
+    method: "LoRA",
+    mix: [
+      { datasetId: "DS-2026-109", ratio: 80 },
+      { datasetId: "DS-2026-104", ratio: 20 },
+    ],
+    status: "已完成",
+    progress: 100,
+    gpu: "4 × A100 80G",
+    startedAt: "2026-11-05 22:00",
+    duration: "4h 40m",
+    tasks: [
+      { task: "医疗问答准确率", before: 62.4, after: 76.5 },
+      { task: "病历摘要 ROUGE-L", before: 41.2, after: 47.6 },
+      { task: "意图识别 F1", before: 84.1, after: 87.2 },
+      { task: "通用指令跟随", before: 88.6, after: 83.8 },
+    ],
+    domain: [
+      { metric: "医学术语命中率", before: 71.3, after: 84.1, note: "ICD-10 术语表抽样 800 条" },
+      { metric: "领域知识问答", before: 58.2, after: 70.9, note: "自建医疗知识测试集 500 题" },
+      { metric: "指南引用准确率", before: 44.6, after: 60.3, note: "对照临床指南条目" },
+    ],
+    forget: 4.8,
+    loss: [2.4, 2.06, 1.82, 1.64, 1.51, 1.42, 1.35, 1.3, 1.26, 1.23, 1.21],
+    conclusion:
+      "8:2 配方医疗问答提升 14.1pt，但通用能力回落 4.8pt 已超 2pt 警戒线，净收益被抵消。",
+    feedback: [{ target: "数据配比", text: "领域占比 80% 过高，建议退回 60% 并补 20% 通用指令样本", href: "/model-finetune" }],
+  },
+  {
     id: "FT-2026-008",
     name: "医疗问答指令微调 · 6:4 配方",
     baseModel: "Qwen2.5-7B-Instruct",
@@ -576,18 +641,60 @@ export const FINETUNE_EXPS: FinetuneExp[] = [
   },
 ];
 
-// 数据配比对照实验（同一基础模型、同一评测集）
-export const MIX_COMPARE = {
-  baseModel: "Qwen2.5-7B-Instruct",
-  evalSet: "医疗下游任务集（3 项）+ 通用能力集（1 项）",
-  rows: [
-    { id: "FT-2026-005", mix: "3 : 7", domainRatio: 30, avgGain: 5.1, best: "医疗问答 +7.4", forget: 0.3, cost: "4h 12m", score: 68.2 },
-    { id: "FT-2026-008", mix: "6 : 4", domainRatio: 60, avgGain: 13.5, best: "医疗问答 +16.2", forget: 1.5, cost: "4h 36m", score: 86.4 },
-    { id: "FT-2026-009", mix: "8 : 2", domainRatio: 80, avgGain: 10.2, best: "医疗问答 +14.1", forget: 4.8, cost: "4h 40m", score: 79.6 },
-  ],
-  conclusion:
-    "领域数据占比 60% 时综合得分最高（86.4），继续提升至 80% 会因通用能力回落抵消收益。建议 6:4 作为医疗场景推荐配方。",
+// ---------------------------------------------------------------- 微调配置（配置对照实验的差异项来源）
+// 对照实验比的是「配方 / 策略」这类微调侧变量，因此配置项与训练评估不同：
+// 训练看数据集/模型类型/框架/预设，微调看配比/微调方式/LoRA 秩/学习率/序列长度/可训练参数。
+export type FinetuneCfg = {
+  /** LoRA 秩与缩放，如 r=16 / α=32；全量微调填「不适用」 */
+  rank: string;
+  lr: string;
+  epochs: number;
+  seqLen: number;
+  batch: number;
+  /** 有效训练样本（按配方采样后） */
+  samples: number;
+  /** 训练 token 量，体现配比带来的样本量差异 */
+  tokens: string;
+  /** 可训练参数占比 */
+  trainable: string;
+  precision: string;
 };
+
+export const FINETUNE_CFG: Record<string, FinetuneCfg> = {
+  "FT-2026-010": { rank: "r=16 / α=32", lr: "2e-4", epochs: 3, seqLen: 4096, batch: 16, samples: 18420, tokens: "26.4M", trainable: "0.42%（29.4M）", precision: "4bit NF4 + bf16" },
+  "FT-2026-009": { rank: "r=16 / α=32", lr: "2e-4", epochs: 3, seqLen: 4096, batch: 16, samples: 18420, tokens: "28.3M", trainable: "0.42%（29.4M）", precision: "bf16" },
+  "FT-2026-008": { rank: "r=16 / α=32", lr: "2e-4", epochs: 3, seqLen: 4096, batch: 16, samples: 18420, tokens: "26.4M", trainable: "0.42%（29.4M）", precision: "bf16" },
+  "FT-2026-007": { rank: "r=8 / α=16", lr: "1.5e-4", epochs: 3, seqLen: 2048, batch: 32, samples: 22150, tokens: "18.9M", trainable: "0.21%（14.7M）", precision: "4bit NF4 + bf16" },
+  "FT-2026-006": { rank: "r=32 / α=64", lr: "1e-4", epochs: 2, seqLen: 8192, batch: 8, samples: 9860, tokens: "42.6M", trainable: "0.86%（60.2M）", precision: "bf16" },
+  "FT-2026-005": { rank: "r=16 / α=32", lr: "2e-4", epochs: 3, seqLen: 4096, batch: 16, samples: 18420, tokens: "24.1M", trainable: "0.42%（29.4M）", precision: "bf16" },
+  "FT-2026-004": { rank: "r=24 / α=48", lr: "1.2e-4", epochs: 3, seqLen: 4096, batch: 8, samples: 14720, tokens: "31.2M", trainable: "0.31%（43.4M）", precision: "bf16" },
+};
+
+/** 领域知识注入 = 领域指标提升均值 */
+export function finetuneDomainGain(exp: FinetuneExp) {
+  return avg(exp.domain.map((d) => d.after - d.before));
+}
+
+/** 最佳单项：下游任务里提升最大的那一项 */
+export function finetuneBest(exp: FinetuneExp) {
+  const list = exp.tasks.filter((t) => !t.task.includes("通用"));
+  if (!list.length) return { task: "--", gain: 0 };
+  const top = list.reduce((m, t) => (t.after - t.before > m.after - m.before ? t : m), list[0]);
+  return { task: top.task, gain: +(top.after - top.before).toFixed(1) };
+}
+
+/** 综合得分：下游提升 60% + 领域注入 40% − 通用能力回落 ×1.5（回落惩罚，避免「高分但能力退化」） */
+export function finetuneScore(exp: FinetuneExp) {
+  return +(0.6 * finetuneGain(exp) + 0.4 * finetuneDomainGain(exp) - 1.5 * exp.forget).toFixed(1);
+}
+
+/** 配比指纹：仅比较数据集的配比构成，用于判断两个试验是否「同配方」 */
+export function mixKey(exp: FinetuneExp) {
+  return exp.mix
+    .map((m) => `${m.datasetId}:${m.ratio}`)
+    .sort()
+    .join("|");
+}
 
 // ================================================================
 // 三、模型推理评估
