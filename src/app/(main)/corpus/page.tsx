@@ -2,7 +2,7 @@
 
 import React, { Suspense, useMemo, useState } from "react";
 import {
-  Library, RotateCcw, Search, Plus, Eye, Download, Upload,
+  Library, RotateCcw, Search, Eye, Download,
   CheckCircle2, Layers3, Database, RefreshCw,
 } from "lucide-react";
 
@@ -93,9 +93,6 @@ function CorpusBody() {
             </p>
           </div>
         </div>
-        <div style={{ flex: 1 }} />
-        <Btn size="sm" icon={<Upload size={13} />}>导入语料</Btn>
-        <Btn size="sm" tone="primary" icon={<Plus size={13} />}>新建语料库</Btn>
       </header>
 
       <div style={{ ...scrollArea, display: "flex", flexDirection: "column", gap: 12 }}>

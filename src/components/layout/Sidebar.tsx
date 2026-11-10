@@ -76,11 +76,11 @@ const NAV_ITEMS: NavItem[] = [
       },
     ],
   },
-  // ── 模型生产中心 ──────────────────────────────
+  // ── 数据中试中心（注：当前导航真身是 TopNavBar，本文件为历史遗留） ──────
   {
     key: "model-production",
     icon: HardDrive,
-    label: "模型生产中心",
+    label: "数据中试中心",
     children: [
       {
         key: "llm-mgmt",
@@ -93,13 +93,13 @@ const NAV_ITEMS: NavItem[] = [
         ],
       },
       {
-        key: "model-training",
+        key: "model-experiment",
         icon: GitBranch,
-        label: "模型训练",
+        label: "模型试验",
         children: [
-          { href: "/model-training", icon: FileText, label: "训练任务" },
-          { href: "/exp-monitor", icon: BarChart3, label: "实验监控", badge: "即将上线" },
-          { href: "/model-export", icon: Rocket, label: "导出发布", badge: "即将上线" },
+          { href: "/model-training", icon: FileText, label: "模型训练评估" },
+          { href: "/model-finetune", icon: FileText, label: "模型微调评估" },
+          { href: "/model-inference", icon: FileText, label: "模型推理评估" },
         ],
       },
       {

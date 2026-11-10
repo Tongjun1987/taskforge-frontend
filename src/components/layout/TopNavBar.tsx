@@ -8,7 +8,7 @@ import {
   Settings, Bell, Search, ChevronDown, LogOut,
   Sparkles, Users, Star, FileText, CheckCircle2,
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
-  Wrench, ClipboardList, Layers3, ArrowUpDown, TrendingUp,
+  Wrench, ClipboardList, Layers3, FlaskConical, TrendingUp,
   History, Route, Upload, Cloud, Brain, Workflow, ShieldCheck,
   LayoutGrid, ChartBar, Share2, Library, Package
 } from "lucide-react";
@@ -114,11 +114,11 @@ const TOP_MENUS = [
   },
   {
     key: "model-production",
-    label: "模型生产中心",
+    label: "数据中试中心",
     icon: Cpu,
     href: "/model-production",
     color: "#f59e0b",
-    desc: "模型管理 · 训练评估 · 应用发布",
+    desc: "模型管理 · 模型试验 · 应用管理",
     subItems: [
       {
         label: "模型管理",
@@ -129,13 +129,13 @@ const TOP_MENUS = [
         ],
       },
       {
-        label: "训练管理",
-        desc: "模型训练 · 模型评估 · 模型测试",
-        icon: ArrowUpDown,
+        label: "模型试验",
+        desc: "基于数据集的训练 / 微调 / 推理评估",
+        icon: FlaskConical,
         children: [
-          { label: "模型训练", href: "/model-training", badge: null },
-          { label: "模型评估", href: "/model-evaluation", badge: null },
-          { label: "模型测试", href: "/model-testing", badge: null },
+          { label: "模型训练评估", href: "/model-training", badge: null },
+          { label: "模型微调评估", href: "/model-finetune", badge: null },
+          { label: "模型推理评估", href: "/model-inference", badge: null },
         ],
       },
       {
@@ -148,12 +148,13 @@ const TOP_MENUS = [
       },
       {
         label: "应用管理",
-        desc: "知识库 · Prompt管理 · 智能体管理",
+        desc: "知识库 · Prompt管理 · 智能体管理 · 模型测试",
         icon: Layers3,
         children: [
           { label: "知识库", href: "/knowledge-base", badge: null },
           { label: "Prompt管理", href: "/prompt-management", badge: null },
           { label: "智能体管理", href: "/agent-management", badge: null },
+          { label: "模型测试", href: "/model-testing", badge: null },
         ],
       },
     ],
@@ -412,7 +413,8 @@ export function TopNavBar() {
         pathname.startsWith("/data-split") || pathname.startsWith("/corpus") ||
         pathname === "/data-production")
       return "data-production";
-    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-evaluation") ||
+    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-finetune") ||
+        pathname.startsWith("/model-inference") ||
         pathname.startsWith("/model-testing") || pathname.startsWith("/model-eval") ||
         pathname.startsWith("/model-repo") || pathname.startsWith("/model-service") ||
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
@@ -721,7 +723,8 @@ export function Sidebar() {
         pathname.startsWith("/data-split") || pathname.startsWith("/corpus") ||
         pathname === "/data-production")
       return "data-production";
-    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-evaluation") ||
+    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-finetune") ||
+        pathname.startsWith("/model-inference") ||
         pathname.startsWith("/model-testing") || pathname.startsWith("/model-eval") ||
         pathname.startsWith("/model-repo") || pathname.startsWith("/model-service") ||
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||
@@ -922,7 +925,8 @@ export function TopBar({ title, subtitle }: { title: string; subtitle?: string }
         pathname.startsWith("/quality") || pathname.startsWith("/data-ops") ||
         pathname.startsWith("/data-preprocess") || pathname === "/data-production")
       return "data-production";
-    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-evaluation") ||
+    if (pathname.startsWith("/model-training") || pathname.startsWith("/model-finetune") ||
+        pathname.startsWith("/model-inference") ||
         pathname.startsWith("/model-testing") || pathname.startsWith("/model-eval") ||
         pathname.startsWith("/model-repo") || pathname.startsWith("/model-service") ||
         pathname.startsWith("/knowledge-base") || pathname.startsWith("/prompt-management") ||

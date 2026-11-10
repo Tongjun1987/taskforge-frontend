@@ -1,766 +1,1143 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, { useMemo, useState } from "react";
 import {
-  Brain, Plus, Play, Pause, RotateCcw, Trash2, Eye, Settings,
-  ChevronRight, ChevronDown, Search, X, CheckCircle2, XCircle,
-  Clock, AlertCircle, Server, Cpu, Zap, Layers, HardDrive,
-  Database, FileText, BarChart3, LineChart, Activity, RefreshCw,
-  Download, ArrowUpDown, Tag, Sparkles, ChevronUp, Link2, Package
+  Brain, Plus, Eye, ArrowLeft, ArrowLeftRight, Ban, Download, Search,
+  Activity, Target, Clock, FileCheck2, Database, CheckCircle2,
+  Layers, Gauge, AlertTriangle, Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { IconBtn } from "@/components/production/ui";
 
-// ============================================================
-// Mock 数据
-// ============================================================
-interface TrainingTask {
-  id: string;
-  name: string;
-  model: string;
-  dataset: string;
-  algorithm: string;
-  precision: string;
-  optimizer: string;
-  status: "running" | "completed" | "failed" | "queued" | "paused";
-  progress?: number;
-  gpu_count: number;
-  started_at: string;
-  finished_at?: string;
-  loss_current?: number;
-  loss_initial?: number;
-  eta?: string;
-  logs?: string[];
-}
+import {
+  C, Panel, Metric, Table, Tag, Btn, IconBtn, Bar, Kv, Grid, LineChart, Spark,
+} from "@/components/production/ui";
+import {
+  TRAIN_EXPS, EXP_DATASETS, MODEL_TYPES, TRAIN_FRAMEWORKS, TRAIN_PRESETS,
+  expDataset, avg, type TrainExp,
+} from "@/components/model-exp/expData";
+import {
+  ExpHeader, Tabs, StatusTag, Field, Sel, NumInput, TextInput, Chips, SectionTitle, Empty, heatColor,
+} from "@/components/model-exp/ui";
 
-const MOCK_TASKS: TrainingTask[] = [
-  {
-    id: "t1", name: "Qwen2.5-7B 指令微调", model: "Qwen2.5-7B-Instruct", dataset: "belle_subset_10k",
-    algorithm: "SFT", precision: "BF16", optimizer: "AdamW + DoRA", status: "running", progress: 67,
-    gpu_count: 4, started_at: "2025-04-18 09:30", loss_current: 1.23, loss_initial: 3.45, eta: "约2小时",
-    logs: ["[09:30] Loading model Qwen2.5-7B-Instruct...", "[09:31] Loading dataset: belle_subset_10k (10240 samples)", "[09:32] Starting training with BF16 precision", "[09:35] Step 100/3000, loss: 2.87, lr: 2e-5", "[09:40] Step 200/3000, loss: 2.45, lr: 2e-5", "[09:45] Step 300/3000, loss: 1.98, lr: 2e-5", "[09:50] Step 400/3000, loss: 1.67, lr: 2e-5", "[09:55] Step 500/3000, loss: 1.43, lr: 2e-5", "[10:00] Step 600/3000, loss: 1.23, lr: 2e-5"],
-  },
-  {
-    id: "t2", name: "DeepSeek-V2.5 增量预训练", model: "DeepSeek-V2.5", dataset: "corpus_pretrain_50B",
-    algorithm: "Full-Pretrain", precision: "FP16", optimizer: "GaLore", status: "completed",
-    gpu_count: 8, started_at: "2025-04-17 14:00", finished_at: "2025-04-18 06:23",
-    loss_current: 0.87, loss_initial: 2.31,
-  },
-  {
-    id: "t3", name: "LLaVA-1.6 多模态微调", model: "LLaVA-1.6-34B", dataset: "llava_instruct_8k",
-    algorithm: "VLM-SFT", precision: "FP16", optimizer: "AdamW + LoRA", status: "failed",
-    gpu_count: 4, started_at: "2025-04-17 08:00", finished_at: "2025-04-17 11:45",
-    logs: ["[08:00] Loading model LLaVA-1.6-34B...", "[08:10] OOM Error: insufficient GPU memory", "[08:10] Training failed: CUDA OOM at step 234"],
-  },
-  {
-    id: "t4", name: "Qwen2-VL 图文对齐训练", model: "Qwen2-VL-72B", dataset: "multimodal_align_5k",
-    algorithm: "VLM-SFT", precision: "BF16", optimizer: "BAdam + DoRA", status: "queued",
-    gpu_count: 8, started_at: "2025-04-18 15:00",
-  },
-  {
-    id: "t5", name: "BGE-M3 Embedding微调", model: "BGE-M3", dataset: "text_retrieval_20k",
-    algorithm: "Contrastive-SFT", precision: "INT8", optimizer: "AdamW", status: "completed",
-    gpu_count: 2, started_at: "2025-04-16 10:00", finished_at: "2025-04-16 18:30",
-    loss_current: 0.34, loss_initial: 1.82,
-  },
-  {
-    id: "t6", name: "LLaMA-3 DPO偏好优化", model: "LLaMA-3-8B", dataset: "preference_pairs_5k",
-    algorithm: "DPO", precision: "FP16", optimizer: "AdamW", status: "paused",
-    gpu_count: 2, started_at: "2025-04-18 08:00", progress: 42,
-    loss_current: 0.56, loss_initial: 1.12,
-  },
-];
+type TabKey = "list" | "compare" | "new";
 
-const MODEL_OPTIONS = [
-  "Qwen2.5-7B-Instruct", "Qwen2-VL-72B-Instruct", "DeepSeek-V2.5",
-  "LLaMA-3-8B", "LLaVA-1.6-34B", "ChatGLM4-9B", "InternLM2.5-7B", "BGE-M3",
-];
-const DATASET_OPTIONS = [
-  { label: "belle_subset_10k", desc: "中文开源指令数据集 (~10K)" },
-  { label: "corpus_pretrain_50B", desc: "大规模预训练语料 (~50B tokens)" },
-  { label: "llava_instruct_8k", desc: "多模态指令数据集 (~8K)" },
-  { label: "multimodal_align_5k", desc: "图文对齐数据集 (~5K)" },
-  { label: "text_retrieval_20k", desc: "文本检索数据集 (~20K)" },
-  { label: "preference_pairs_5k", desc: "偏好对比数据集 (~5K)" },
-];
-const ALGORITHMS = [
-  { value: "sft", label: "指令监督微调 (SFT)", desc: "标准指令微调，最常用" },
-  { value: "full-pretrain", label: "增量预训练 (Full-Pretrain)", desc: "继续预训练，扩充知识" },
-  { value: "vlm-sft", label: "多模态微调 (VLM-SFT)", desc: "视觉语言模型微调" },
-  { value: "reward", label: "奖励模型训练 (Reward)", desc: "训练Reward模型" },
-  { value: "ppo", label: "PPO强化学习", desc: "近端策略优化，强化学习训练" },
-  { value: "dpo", label: "DPO直接偏好优化", desc: "直接优化偏好，无需RL" },
-  { value: "kto", label: "KTO 知识蒸馏", desc: "基于知识的蒸馏优化" },
-  { value: "orpo", label: "ORPO 赔率比优化", desc: "单一阶段偏好优化" },
-  { value: "contrastive-sft", label: "对比学习微调", desc: "用于Embedding/检索模型" },
-];
-const PRECISIONS = [
-  { value: "FP16", label: "FP16", desc: "半精度，速度快" },
-  { value: "BF16", label: "BF16", desc: "BF16，稳定性好" },
-  { value: "INT8", label: "INT8", desc: "量化，显存节省50%" },
-  { value: "INT4", label: "INT4", desc: "超低精度，极致压缩" },
-];
-const OPTIMIZERS = [
-  { value: "AdamW", label: "AdamW", desc: "标准优化器" },
-  { value: "GaLore", label: "GaLore", desc: "梯度低秩投影，显存优化" },
-  { value: "BAdam", label: "BAdam", desc: "块自适应优化，大模型高效" },
-  { value: "DoRA", label: "DoRA", desc: "权重分解低秩适配" },
-];
-const FINE_TUNE_METHODS = [
-  { value: "full", label: "全量微调", desc: "所有参数参与训练" },
-  { value: "lora", label: "LoRA", desc: "低秩适配，显存占用低" },
-  { value: "qlora", label: "QLoRA", desc: "量化+LoRA，极致效率" },
-  { value: "dora", label: "DoRA", desc: "权重分解低秩适配" },
-];
-const DISTRIBUTED_MODES = [
-  { value: "single", label: "单机单卡", icon: Cpu },
-  { value: "single-multi", label: "单机多卡", icon: Layers },
-  { value: "multi", label: "多机多卡", icon: Server },
-];
+const OVERFIT_TONE: Record<string, string> = { 低: C.success, 中: C.warn, 高: C.danger };
 
-// ============================================================
-// 工具
-// ============================================================
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, { bg: string; color: string; label: string }> = {
-    running: { bg: "#eff6ff", color: "#2563eb", label: "运行中" },
-    completed: { bg: "#f0fdf4", color: "#16a34a", label: "已完成" },
-    failed: { bg: "#fef2f2", color: "#dc2626", label: "失败" },
-    queued: { bg: "#f8fafc", color: "#94a3b8", label: "排队中" },
-    paused: { bg: "#fffbeb", color: "#d97706", label: "已暂停" },
-  };
-  const s = styles[status] || styles.queued;
-  return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: s.bg, color: s.color, fontWeight: 600 }}>{s.label}</span>;
-}
+const pct = (v: number, digits = 1) => `${v.toFixed(digits)}%`;
 
-// ============================================================
-// Tab 1: 训练任务列表
-// ============================================================
-function TrainingListTab({ onCreate }: { onCreate: () => void }) {
-  const [tasks, setTasks] = useState<TrainingTask[]>(MOCK_TASKS);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [filter, setFilter] = useState("全部");
+// ================================================================
+// 列表
+// ================================================================
+function TrainList({
+  exps, onOpen, onCompare, onStop,
+}: {
+  exps: TrainExp[];
+  onOpen: (id: string) => void;
+  onCompare: (id: string) => void;
+  onStop: (id: string) => void;
+}) {
+  const [status, setStatus] = useState("");
+  const [modelType, setModelType] = useState("");
+  const [kw, setKw] = useState("");
 
-  const filtered = filter === "全部" ? tasks : tasks.filter(t => t.status === filter);
-
-  const toggleExpand = (id: string) => setExpanded(expanded === id ? null : id);
-
-  const actionTask = (id: string, action: "pause" | "resume" | "stop" | "delete") => {
-    if (action === "delete") {
-      setTasks(prev => prev.filter(t => t.id !== id));
-      toast.success("训练任务已删除");
-    } else if (action === "pause") {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "paused" as const } : t));
-      toast.success("训练已暂停");
-    } else if (action === "resume") {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "running" as const } : t));
-      toast.success("训练已恢复");
-    } else if (action === "stop") {
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "failed" as const, finished_at: new Date().toLocaleString() } : t));
-      toast.success("训练已停止");
-    }
-  };
+  const rows = useMemo(
+    () =>
+      exps.filter(
+        (e) =>
+          (!status || e.status === status) &&
+          (!modelType || e.modelType === modelType) &&
+          (!kw || e.name.includes(kw) || e.id.includes(kw) || (expDataset(e.datasetId)?.name || "").includes(kw))
+      ),
+    [exps, status, modelType, kw]
+  );
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>训练任务列表</div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 4 }}>
-            {["全部", "running", "completed", "failed", "queued"].map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                style={{ padding: "4px 10px", borderRadius: 5, border: `1px solid ${filter === f ? "#f59e0b" : "#e2e8f0"}`, background: filter === f ? "#fffbeb" : "#fff", color: filter === f ? "#d97706" : "#64748b", fontSize: 11, cursor: "pointer", fontWeight: filter === f ? 600 : 400 }}>
-                {f === "全部" ? "全部" : f === "running" ? "运行中" : f === "completed" ? "已完成" : f === "failed" ? "失败" : "排队"}
-              </button>
-            ))}
+    <Panel
+      title="训练评估试验"
+      desc="选择数据集与模型类型后，平台自动完成环境配置、数据加载、训练与指标计算"
+      extra={
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Sel
+            value={status}
+            onChange={setStatus}
+            options={["运行中", "已完成", "排队中", "已终止"]}
+            placeholder="全部状态"
+          />
+          <Sel value={modelType} onChange={setModelType} options={MODEL_TYPES} placeholder="全部模型类型" />
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: C.faint }} />
+            <input
+              value={kw}
+              onChange={(e) => setKw(e.target.value)}
+              placeholder="搜索试验 / 数据集"
+              style={{
+                width: 190, height: 34, paddingLeft: 28, paddingRight: 10, fontSize: 12.5,
+                border: `1px solid ${C.border}`, borderRadius: 6, outline: "none", boxSizing: "border-box",
+              }}
+            />
           </div>
-          <button onClick={onCreate} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 7, border: "none", background: "#f59e0b", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-            <Plus size={13} />新建训练
-          </button>
         </div>
+      }
+      bodyStyle={{ padding: 0 }}
+    >
+      <Table
+        head={["试验", "数据集", "模型类型 / 框架", "状态", "主指标", "精确率 / 召回率", "早停", "过拟合", "开始时间", "操作"]}
+        widths={["196px", "180px", "172px", "86px", "92px", "128px", "104px", "76px", "124px", "92px"]}
+        rowKey={(i) => rows[i].id}
+        rows={rows.map((e) => {
+          const ds = expDataset(e.datasetId);
+          return [
+            <div key="n">
+              <div style={{ fontSize: 12.5, fontWeight: 500, color: C.text, lineHeight: 1.45 }}>{e.name}</div>
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>{e.id} · {e.gpu}</div>
+            </div>,
+            <div key="d">
+              <div style={{ fontSize: 12.5, color: C.text }}>{ds?.name || e.datasetId}</div>
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>{e.datasetId} · {ds?.dataType} · {ds?.scale}</div>
+            </div>,
+            <div key="m">
+              <div style={{ fontSize: 12.5, color: C.text }}>{e.modelType}</div>
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>{e.framework}</div>
+            </div>,
+            <div key="s">
+              <StatusTag status={e.status} />
+              {e.status === "运行中" && (
+                <div style={{ marginTop: 5, width: 62 }}>
+                  <Bar pct={e.progress} tone={C.info} h={4} />
+                </div>
+              )}
+            </div>,
+            <div key="v">
+              {e.metrics.length ? (
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.1 }}>{pct(e.mainValue)}</div>
+              ) : (
+                <span style={{ color: C.faint }}>--</span>
+              )}
+              <div style={{ fontSize: 10.5, color: C.faint, marginTop: 2 }}>{e.mainLabel}</div>
+            </div>,
+            <div key="pr" style={{ fontSize: 12, color: C.sub, whiteSpace: "nowrap" }}>
+              {e.metrics.length > 1 ? (
+                <>
+                  {pct(e.metrics[1].value)} <span style={{ color: C.border }}>/</span> {pct(e.metrics[2].value)}
+                </>
+              ) : (
+                "--"
+              )}
+            </div>,
+            <div key="es" style={{ fontSize: 11.5 }}>
+              {e.process.earlyStop ? (
+                <Tag tone={C.warn}>第 {e.process.earlyStopEpoch} 轮</Tag>
+              ) : (
+                <Tag tone={C.faint}>{e.status === "运行中" ? `未触发/${e.process.patience}` : "未触发"}</Tag>
+              )}
+            </div>,
+            <div key="of" style={{ fontSize: 11.5 }}>
+              {e.metrics.length ? (
+                <Tag tone={OVERFIT_TONE[e.process.overfit]}>{e.process.overfit} · {e.process.gap.toFixed(1)}pt</Tag>
+              ) : (
+                <span style={{ color: C.faint }}>--</span>
+              )}
+            </div>,
+            <div key="t" style={{ fontSize: 11.5, color: C.sub, whiteSpace: "nowrap" }}>
+              {e.startedAt}
+              <div style={{ fontSize: 11, color: C.faint }}>{e.duration}</div>
+            </div>,
+            <div key="a" style={{ display: "flex", gap: 5 }}>
+              <IconBtn size="sm" tone="primary" icon={<Eye size={13} />} label="查看评估报告" onClick={() => onOpen(e.id)} />
+              <IconBtn size="sm" icon={<ArrowLeftRight size={13} />} label="加入对照实验" onClick={() => onCompare(e.id)} />
+              {e.status === "运行中" && (
+                <IconBtn size="sm" tone="danger" icon={<Ban size={13} />} label="终止试验" onClick={() => onStop(e.id)} />
+              )}
+            </div>,
+          ];
+        })}
+      />
+      {rows.length === 0 && <Empty text="没有符合条件的训练试验" />}
+    </Panel>
+  );
+}
+
+// ================================================================
+// 对照实验：两个训练任务的结果比对
+// ================================================================
+type Dir = "high" | "low";
+
+const VERDICT_EPS = 0.05;
+
+function verdictOf(d: number, dir: Dir) {
+  if (Math.abs(d) < VERDICT_EPS) return { text: "持平", tone: C.faint };
+  const good = dir === "high" ? d > 0 : d < 0;
+  return { text: good ? "更优" : "更差", tone: good ? C.success : C.danger };
+}
+
+/** 单个训练任务的结果卡：核心指标 + Loss 曲线 + 收敛足迹 */
+function TaskResultCard({
+  role, exp, tone, onOpen,
+}: {
+  role: string;
+  exp: TrainExp;
+  tone: string;
+  onOpen: (id: string) => void;
+}) {
+  const ds = expDataset(exp.datasetId);
+  const vals = exp.curves.map((c) => c.valLoss);
+  const cur = vals.length ? vals[vals.length - 1] : 0;
+  const low = vals.length ? Math.min(...vals) : 0;
+  const drop = vals.length && vals[0] ? ((vals[0] - low) / vals[0]) * 100 : 0;
+  // 平均单轮耗时：等价于参考图里的「速度」，但用可核对的耗时/轮次算出来
+  const durMin = (() => {
+    const h = /(\d+)h/.exec(exp.duration);
+    const m = /(\d+)m/.exec(exp.duration);
+    return (h ? Number(h[1]) * 60 : 0) + (m ? Number(m[1]) : 0);
+  })();
+  const perEpoch = durMin && exp.process.totalEpochs ? durMin / exp.process.totalEpochs : 0;
+
+  const tiles = [
+    { k: exp.mainLabel, v: pct(exp.mainValue), hint: "测试集结果" },
+    {
+      k: "train-val 差距",
+      v: `${exp.process.gap.toFixed(1)}pt`,
+      hint: `train ${pct(exp.process.trainAcc)} · val ${pct(exp.process.valAcc)}`,
+    },
+    {
+      k: "最佳轮次",
+      v: `${exp.process.bestEpoch} / ${exp.process.totalEpochs}`,
+      hint: exp.process.earlyStop ? `早停于第 ${exp.process.earlyStopEpoch} 轮` : "未触发早停",
+    },
+    { k: "训练耗时", v: exp.duration, hint: exp.gpu },
+  ];
+
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden", background: "#fff", minWidth: 0 }}>
+      <div
+        style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
+          background: `${tone}0d`, borderBottom: `1px solid ${C.borderSoft}`,
+        }}
+      >
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", background: tone, borderRadius: 4, padding: "2px 6px", letterSpacing: 0.2 }}>
+          {role}
+        </span>
+        <span
+          title={exp.name}
+          style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {exp.name}
+        </span>
+        <StatusTag status={exp.status} />
       </div>
-
-      {/* 任务卡片列表 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {filtered.map(task => (
-          <div key={task.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-            {/* 主行 */}
-            <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{task.name}</span>
-                  <StatusBadge status={task.status} />
-                </div>
-                <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748b" }}>
-                  <span>模型: <strong style={{ color: "#334155" }}>{task.model}</strong></span>
-                  <span>算法: <strong style={{ color: "#334155" }}>{task.algorithm}</strong></span>
-                  <span>精度: <strong style={{ color: "#334155" }}>{task.precision}</strong></span>
-                  <span><Cpu size={11} style={{ marginRight: 2 }} />{task.gpu_count} GPU</span>
-                  <span><Clock size={11} style={{ marginRight: 2 }} />{task.started_at}</span>
-                </div>
-              </div>
-              {task.progress !== undefined && task.status === "running" && (
-                <div style={{ width: 120 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", marginBottom: 4 }}>
-                    <span>进度</span><span style={{ fontWeight: 600, color: "#2563eb" }}>{task.progress}%</span>
-                  </div>
-                  <div style={{ height: 4, background: "#e2e8f0", borderRadius: 2 }}>
-                    <div style={{ height: "100%", width: `${task.progress}%`, background: "#2563eb", borderRadius: 2, transition: "width 0.3s" }} />
-                  </div>
-                </div>
-              )}
-              {task.loss_current !== undefined && (
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 11, color: "#94a3b8" }}>当前 Loss</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>{task.loss_current}</div>
-                  <div style={{ fontSize: 10, color: "#16a34a" }}>↓ {((task.loss_initial! - task.loss_current) / task.loss_initial! * 100).toFixed(1)}%</div>
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 4 }}>
-                {task.status === "running" && (
-                  <IconBtn size="sm" tone="warn" icon={<Pause size={13} />} label="暂停" onClick={() => actionTask(task.id, "pause")} />
-                )}
-                {task.status === "paused" && (
-                  <IconBtn size="sm" tone="success" icon={<Play size={13} />} label="恢复" onClick={() => actionTask(task.id, "resume")} />
-                )}
-                {(task.status === "running" || task.status === "queued") && (
-                  <IconBtn size="sm" tone="danger" icon={<X size={13} />} label="停止" onClick={() => actionTask(task.id, "stop")} />
-                )}
-                <IconBtn
-                  size="sm"
-                  tone="ghost"
-                  icon={expanded === task.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  label={expanded === task.id ? "收起详情" : "查看详情"}
-                  onClick={() => toggleExpand(task.id)}
-                />
-                {task.status !== "running" && (
-                  <IconBtn size="sm" tone="danger" icon={<Trash2 size={13} />} label="删除" onClick={() => actionTask(task.id, "delete")} />
-                )}
-              </div>
+      <div style={{ padding: 12 }}>
+        <div style={{ fontSize: 11, color: C.faint, marginBottom: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {exp.id} ｜ {ds?.name || exp.datasetId} ｜ {exp.modelType}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {tiles.map((t) => (
+            <div key={t.k} style={{ border: `1px solid ${C.borderSoft}`, borderRadius: 6, padding: "7px 9px", background: C.bg, minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, color: C.faint, whiteSpace: "nowrap" }}>{t.k}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.35, marginTop: 1, whiteSpace: "nowrap" }}>{t.v}</div>
+              <div style={{ fontSize: 10.5, color: C.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.hint}</div>
             </div>
-
-            {/* 展开：日志/指标 */}
-            {expanded === task.id && (
-              <div style={{ borderTop: "1px solid #f1f5f9", background: "#f8fafc", padding: "14px 16px" }}>
-                {task.logs && task.logs.length > 0 ? (
-                  <>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>训练日志</div>
-                    <pre style={{ fontSize: 11, fontFamily: "monospace", background: "#0f172a", color: "#e2e8f0", padding: 14, borderRadius: 6, maxHeight: 200, overflowY: "auto", margin: 0, lineHeight: 1.8 }}>
-                      {task.logs.map((l, i) => <div key={i}>{l}</div>)}
-                    </pre>
-                  </>
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
-                    {[
-                      { label: "初始 Loss", value: task.loss_initial?.toFixed(4) || "-" },
-                      { label: "当前 Loss", value: task.loss_current?.toFixed(4) || "-" },
-                      { label: "Loss 下降", value: task.loss_initial ? `${((task.loss_initial - (task.loss_current || 0)) / task.loss_initial * 100).toFixed(1)}%` : "-" },
-                      { label: "GPU 利用率", value: task.status === "completed" ? "95%" : "78%" },
-                    ].map(m => (
-                      <div key={m.label} style={{ background: "#fff", borderRadius: 6, padding: "10px 12px", textAlign: "center" }}>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>{m.value}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{m.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {task.eta && task.status === "running" && (
-                  <div style={{ fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
-                    <Activity size={11} />预计剩余: <strong style={{ color: "#2563eb" }}>{task.eta}</strong>
-                  </div>
-                )}
-                {task.finished_at && (
-                  <div style={{ fontSize: 11, color: "#64748b" }}>结束时间: {task.finished_at}</div>
-                )}
-                {/* 断点2修复：训练完成 → 保存到模型仓库 */}
-                {task.status === "completed" && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9", display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => { toast.success(`模型「${task.name}」已保存到模型仓库`); }}
-                      style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #16a34a", background: "#f0fdf4", color: "#16a34a", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                      <Package size={12} />保存到模型仓库
-                    </button>
-                    <button
-                      onClick={() => window.location.href = (process.env.NEXT_PUBLIC_BASE_PATH || '') + "/model-testing"}
-                      style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                      <BarChart3 size={12} />进入模型测试 →
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8", fontSize: 13 }}>暂无训练任务</div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: C.sub, margin: "12px 0 2px" }}>Loss 曲线（val_loss）</div>
+        {vals.length ? (
+          <LineChart
+            labels={exp.curves.map((c) => `E${c.epoch}`)}
+            series={[{ name: "val_loss", color: tone, data: vals }]}
+            height={150}
+          />
+        ) : (
+          <Empty text="训练尚未产生曲线" />
         )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, marginTop: 6, paddingTop: 8, borderTop: `1px solid ${C.borderSoft}` }}>
+          <span style={{ color: C.faint }}>当前 <b style={{ color: C.text }}>{cur.toFixed(3)}</b></span>
+          <span style={{ color: C.faint }}>最低 <b style={{ color: C.success }}>{low.toFixed(3)}</b></span>
+          <span style={{ color: C.faint }}>下降 <b style={{ color: C.info }}>{drop.toFixed(1)}%</b></span>
+          <span style={{ color: C.faint }}>
+            均速 <b style={{ color: C.warn }}>{perEpoch ? (perEpoch >= 1 ? `${perEpoch.toFixed(1)} min/轮` : `${Math.round(perEpoch * 60)} s/轮`) : "--"}</b>
+          </span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+          <Btn size="sm" tone="plain" icon={<Eye size={12} />} onClick={() => onOpen(exp.id)}>
+            查看该任务完整结果
+          </Btn>
+        </div>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// Tab 2: 新建训练向导
-// ============================================================
-function CreateTrainingTab({ onBack }: { onBack: () => void }) {
-  const [step, setStep] = useState(1);
-  const [config, setConfig] = useState({
-    name: "",
-    model: "",
-    dataset: "",
-    algorithm: "sft",
-    precision: "BF16",
-    optimizer: "AdamW",
-    fineTuneMethod: "lora",
-    distributed: "single-multi",
-    gpu_count: 4,
-    learning_rate: "2e-5",
-    batch_size: 8,
-    epochs: 3,
-    max_seq_len: 8192,
-    warmup_ratio: 0.1,
-    use_flash_attention: true,
-    custom_args: "",
+function TrainCompare({
+  exps, pair, setPair, onOpen,
+}: {
+  exps: TrainExp[];
+  pair: string[];
+  setPair: (ids: string[]) => void;
+  onOpen: (id: string) => void;
+}) {
+  const ready = exps.filter((e) => e.metrics.length > 0);
+  const a = ready.find((e) => e.id === pair[0]) || ready[0];
+  const b =
+    ready.find((e) => e.id === pair[1] && e.id !== a?.id) ||
+    ready.find((e) => e.id !== a?.id) ||
+    ready[0];
+
+  if (!a || !b || a.id === b.id) {
+    return (
+      <Panel title="对比实验" desc="以训练任务为单位，任选 2 个任务比对训练结果">
+        <Empty text="至少需要 2 个已产出结果的训练任务才能对比" />
+      </Panel>
+    );
+  }
+
+  const dsA = expDataset(a.datasetId);
+  const dsB = expDataset(b.datasetId);
+  const sameDs = a.datasetId === b.datasetId;
+  const sameModel = a.modelType === b.modelType;
+  const sameMain = a.mainLabel === b.mainLabel;
+
+  const caliber = sameDs
+    ? {
+        tag: "同数据集 · 比模型",
+        tone: C.info,
+        desc: `两个任务使用同一数据集（${dsA?.name || a.datasetId}），结果差异来自模型结构或超参配置，结论用于模型选型`,
+      }
+    : sameModel
+    ? {
+        tag: "同模型类型 · 比数据集",
+        tone: C.success,
+        desc: `两个任务模型类型一致（${a.modelType}），结果差异来自数据集，结论用于判断数据集质量与适用性`,
+      }
+    : {
+        tag: "口径不一致 · 仅作参考",
+        tone: C.warn,
+        desc: "两个任务的模型类型与数据集均不同，数值不可直接分优劣，建议先统一其中一个变量再对比",
+      };
+
+  const opts = ready.map((e) => ({ value: e.id, label: `${e.id} · ${e.name}` }));
+
+  // ---------------- 指标差异 ----------------
+  const dMain = b.mainValue - a.mainValue;
+  const dGap = b.process.gap - a.process.gap;
+  const dValAcc = b.process.valAcc - a.process.valAcc;
+  const dTrainAcc = b.process.trainAcc - a.process.trainAcc;
+
+  type DiffRow = { key: string; label: string; a: string; b: string; d: string; tone?: string; verdict: React.ReactNode };
+  const rows: DiffRow[] = [];
+
+  if (sameMain) {
+    const v = verdictOf(dMain, "high");
+    rows.push({
+      key: "main", label: `主指标 · ${a.mainLabel}`, tone: v.tone,
+      a: pct(a.mainValue), b: pct(b.mainValue),
+      d: `${dMain > 0 ? "+" : ""}${dMain.toFixed(1)}pt`,
+      verdict: <Tag tone={v.tone}>{v.text}</Tag>,
+    });
+    if (a.metrics[1] && b.metrics[1]) {
+      const d = b.metrics[1].value - a.metrics[1].value;
+      const vv = verdictOf(d, "high");
+      rows.push({
+        key: "p", label: "精确率", tone: vv.tone, a: pct(a.metrics[1].value), b: pct(b.metrics[1].value),
+        d: `${d > 0 ? "+" : ""}${d.toFixed(1)}pt`, verdict: <Tag tone={vv.tone}>{vv.text}</Tag>,
+      });
+    }
+    if (a.metrics[2] && b.metrics[2]) {
+      const d = b.metrics[2].value - a.metrics[2].value;
+      const vv = verdictOf(d, "high");
+      rows.push({
+        key: "r", label: "召回率", tone: vv.tone, a: pct(a.metrics[2].value), b: pct(b.metrics[2].value),
+        d: `${d > 0 ? "+" : ""}${d.toFixed(1)}pt`, verdict: <Tag tone={vv.tone}>{vv.text}</Tag>,
+      });
+    }
+  } else {
+    rows.push({
+      key: "main", label: "主指标", tone: C.faint,
+      a: `${pct(a.mainValue)}（${a.mainLabel}）`, b: `${pct(b.mainValue)}（${b.mainLabel}）`,
+      d: "—", verdict: <Tag tone={C.faint}>口径不同</Tag>,
+    });
+  }
+
+  const vVal = verdictOf(dValAcc, "high");
+  rows.push({
+    key: "va", label: "val_acc", tone: vVal.tone, a: pct(a.process.valAcc), b: pct(b.process.valAcc),
+    d: `${dValAcc > 0 ? "+" : ""}${dValAcc.toFixed(1)}pt`, verdict: <Tag tone={vVal.tone}>{vVal.text}</Tag>,
+  });
+  const vTrain = verdictOf(dTrainAcc, "high");
+  rows.push({
+    key: "ta", label: "train_acc", tone: vTrain.tone, a: pct(a.process.trainAcc), b: pct(b.process.trainAcc),
+    d: `${dTrainAcc > 0 ? "+" : ""}${dTrainAcc.toFixed(1)}pt`, verdict: <Tag tone={vTrain.tone}>{vTrain.text}</Tag>,
+  });
+  const vGap = verdictOf(dGap, "low");
+  rows.push({
+    key: "gap", label: "train-val 差距（越小越好）", tone: vGap.tone, a: `${a.process.gap.toFixed(1)}pt`, b: `${b.process.gap.toFixed(1)}pt`,
+    d: `${dGap > 0 ? "+" : ""}${dGap.toFixed(1)}pt`, verdict: <Tag tone={vGap.tone}>{vGap.text}</Tag>,
+  });
+  rows.push({
+    key: "ep", label: "最佳轮次",
+    a: `第 ${a.process.bestEpoch} / ${a.process.totalEpochs} 轮`,
+    b: `第 ${b.process.bestEpoch} / ${b.process.totalEpochs} 轮`,
+    d: "—", verdict: <span style={{ color: C.faint, fontSize: 11 }}>收敛速度</span>,
+  });
+  rows.push({
+    key: "es", label: "早停",
+    a: a.process.earlyStop ? `第 ${a.process.earlyStopEpoch} 轮触发` : "未触发",
+    b: b.process.earlyStop ? `第 ${b.process.earlyStopEpoch} 轮触发` : "未触发",
+    d: "—", verdict: <span style={{ color: C.faint, fontSize: 11 }}>过程标记</span>,
   });
 
-  const update = (key: string, val: any) => setConfig(prev => ({ ...prev, [key]: val }));
-
-  const submit = () => {
-    if (!config.name) { toast.error("请填写训练任务名称"); return; }
-    if (!config.model) { toast.error("请选择基础模型"); return; }
-    if (!config.dataset) { toast.error("请选择数据集"); return; }
-    toast.success(`训练任务「${config.name}」已提交，正在排队...`);
-    onBack();
-  };
+  // ---------------- 结论 ----------------
+  const winner = sameMain && Math.abs(dMain) >= VERDICT_EPS ? (dMain > 0 ? b : a) : null;
+  const loser = winner ? (winner.id === a.id ? b : a) : null;
+  const dsWinner = winner ? expDataset(winner.datasetId) : undefined;
+  const dsLoser = loser ? expDataset(loser.datasetId) : undefined;
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Panel
+        title="选择对比的两个训练任务"
+        desc="对比以训练任务为单位：各选 1 个有结果的任务，左侧为任务 A（基线），右侧为任务 B（对比）"
+        extra={
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Tag tone={caliber.tone}>{caliber.tag}</Tag>
+            <Btn size="sm" tone="plain" icon={<Download size={13} />} onClick={() => toast.success("对比分析报告（PDF）已开始下载")}>
+              导出对比报告
+            </Btn>
+          </div>
+        }
+      >
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: C.sub, marginBottom: 5 }}>任务 A（基线）</label>
+            <Sel value={a.id} onChange={(v) => setPair([v, b.id])} options={opts} />
+          </div>
+          <Btn size="sm" icon={<ArrowLeftRight size={13} />} onClick={() => setPair([b.id, a.id])} title="交换 A / B">
+            交换
+          </Btn>
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: C.sub, marginBottom: 5 }}>任务 B（对比）</label>
+            <Sel
+              value={b.id}
+              onChange={(v) => setPair([a.id, v])}
+              options={opts.filter((o) => o.value !== a.id)}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            marginTop: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+            padding: "9px 12px", borderRadius: 6,
+            background: `${caliber.tone}0d`, border: `1px solid ${caliber.tone}33`,
+          }}
+        >
+          <Info size={13} style={{ color: caliber.tone, flexShrink: 0 }} />
+          <span style={{ fontSize: 11.5, color: C.sub, lineHeight: 1.6 }}>{caliber.desc}</span>
+        </div>
+      </Panel>
+
+      <Grid cols={2}>
+        <TaskResultCard role="A · 基线" exp={a} tone={C.primary} onOpen={onOpen} />
+        <TaskResultCard role="B · 对比" exp={b} tone={C.teal} onOpen={onOpen} />
+      </Grid>
+
+      <Panel title="Loss 收敛对比" desc="两条 val_loss 曲线叠在同一轮次轴上，越低越接近收敛">
+        <LineChart
+          labels={a.curves.slice(0, Math.min(a.curves.length, b.curves.length)).map((c) => `E${c.epoch}`)}
+          series={[
+            { name: `A · ${dsA?.name || a.id}`, color: C.primary, data: a.curves.slice(0, Math.min(a.curves.length, b.curves.length)).map((c) => c.valLoss) },
+            { name: `B · ${dsB?.name || b.id}`, color: C.teal, data: b.curves.slice(0, Math.min(a.curves.length, b.curves.length)).map((c) => c.valLoss) },
+          ]}
+          height={190}
+        />
+        <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11.5, flexWrap: "wrap" }}>
+          <LegendItem color={C.primary} text={`A · ${a.id}`} />
+          <LegendItem color={C.teal} text={`B · ${b.id}`} />
+          <span style={{ color: C.faint }}>
+            终轮 val_loss：A {a.curves.length ? a.curves[a.curves.length - 1].valLoss.toFixed(3) : "--"} ｜ B{" "}
+            {b.curves.length ? b.curves[b.curves.length - 1].valLoss.toFixed(3) : "--"}
+          </span>
+        </div>
+      </Panel>
+
+      <Panel title="指标差异" desc="差值 = 任务 B − 任务 A；主指标方向为越高越好，train-val 差距为越低越好">
+        <Table
+          head={["对比项", "任务 A", "任务 B", "差值（B − A）", "判定"]}
+          widths={["220px", "150px", "150px", "130px", "auto"]}
+          rowKey={(i) => rows[i].key}
+          rows={rows.map((r) => [
+            <span key="l" style={{ fontSize: 12, color: C.text }}>{r.label}</span>,
+            <span key="a" style={{ fontSize: 12, color: C.sub }}>{r.a}</span>,
+            <span key="b" style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>{r.b}</span>,
+            <span key="d" style={{ fontSize: 12, fontWeight: 500, color: r.tone || C.faint }}>
+              {r.d}
+            </span>,
+            <span key="v">{r.verdict}</span>,
+          ])}
+        />
+      </Panel>
+
+      <Panel title="训练配置对照" desc="配置项差异会影响结果，判定优劣前先确认两边只差一个变量">
+        <Table
+          head={["对比项", "任务 A（基线）", "任务 B（对比）"]}
+          widths={["140px", "auto", "auto"]}
+          rowKey={(i) => String(i)}
+          rows={[
+            [
+              <span key="1" style={{ fontSize: 12, color: C.text }}>数据集</span>,
+              <span key="1a" style={{ fontSize: 12, color: C.sub }}>{a.datasetId} · {dsA?.name || "-"}</span>,
+              <span key="1b" style={{ fontSize: 12, color: C.sub }}>{b.datasetId} · {dsB?.name || "-"}</span>,
+            ],
+            [
+              <span key="2" style={{ fontSize: 12, color: C.text }}>模型类型</span>,
+              <span key="2a" style={{ fontSize: 12, color: sameModel ? C.sub : C.warn }}>{a.modelType}</span>,
+              <span key="2b" style={{ fontSize: 12, color: sameModel ? C.sub : C.warn }}>{b.modelType}</span>,
+            ],
+            [
+              <span key="3" style={{ fontSize: 12, color: C.text }}>训练框架</span>,
+              <span key="3a" style={{ fontSize: 12, color: C.sub }}>{a.framework}</span>,
+              <span key="3b" style={{ fontSize: 12, color: C.sub }}>{b.framework}</span>,
+            ],
+            [
+              <span key="4" style={{ fontSize: 12, color: C.text }}>流程预设</span>,
+              <span key="4a" style={{ fontSize: 12, color: C.sub }}>{a.preset}</span>,
+              <span key="4b" style={{ fontSize: 12, color: C.sub }}>{b.preset}</span>,
+            ],
+            [
+              <span key="5" style={{ fontSize: 12, color: C.text }}>算力 / 耗时</span>,
+              <span key="5a" style={{ fontSize: 12, color: C.sub }}>{a.gpu} · {a.duration}</span>,
+              <span key="5b" style={{ fontSize: 12, color: C.sub }}>{b.gpu} · {b.duration}</span>,
+            ],
+            [
+              <span key="6" style={{ fontSize: 12, color: C.text }}>开始时间</span>,
+              <span key="6a" style={{ fontSize: 12, color: C.sub }}>{a.startedAt}</span>,
+              <span key="6b" style={{ fontSize: 12, color: C.sub }}>{b.startedAt}</span>,
+            ],
+          ]}
+        />
+      </Panel>
+
+      <Panel
+        title="对比结论"
+        desc="按指标差异自动生成，可随对比报告一起归档"
+        extra={
+          winner ? (
+            winner.id === b.id ? <Tag tone={C.success}>任务 B 更优</Tag> : <Tag tone={C.danger}>任务 A 更优</Tag>
+          ) : (
+            <Tag tone={C.faint}>无显著差异</Tag>
+          )
+        }
+      >
+        <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.95 }}>
+          {sameMain ? (
+            <>
+              任务 B「{b.name}」的 {b.mainLabel} 为 <b>{pct(b.mainValue)}</b>，任务 A「{a.name}」为 <b>{pct(a.mainValue)}</b>，
+              B {dMain >= 0 ? "高" : "低"}{" "}
+              <b style={{ color: dMain >= 0 ? C.success : C.danger }}>{Math.abs(dMain).toFixed(1)}pt</b>；
+              train-val 差距 {dGap <= 0 ? "收窄" : "扩大"} {Math.abs(dGap).toFixed(1)}pt（
+              {a.process.overfit === b.process.overfit ? `过拟合程度均为${a.process.overfit}` : `${a.process.overfit} → ${b.process.overfit}`}），
+              最佳轮次 {a.process.bestEpoch} → {b.process.bestEpoch} 轮。
+              {sameModel && !sameDs && (
+                <>
+                  {" "}两个任务模型类型同为 {a.modelType}，因此差异主要来自数据集：{dsWinner?.name || "-"}（{pct(winner?.mainValue ?? 0)}）优于{" "}
+                  {dsLoser?.name || "-"}（{pct(loser?.mainValue ?? 0)}）。
+                </>
+              )}
+              {sameDs && (
+                <>
+                  {" "}两个任务使用同一数据集，差异主要来自模型结构或超参配置，可作为模型选型依据。
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              两个任务的主指标口径不同（A 为 {a.mainLabel}、B 为 {b.mainLabel}），因此只做数值并列展示、不判定优劣。
+              如需得到可用结论，建议统一评估指标或统一其中一项变量后重新对比。
+            </>
+          )}
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {(winner
+            ? [
+                `优先采用任务 B 对应配置：「${winner.name}」（${winner.id}）在同口径下主指标更高。`,
+                loser && loser.advice.length
+                  ? `任务 A 侧数据集需补强：${loser.advice[0]}`
+                  : `任务 A 侧建议复核训练配置与数据分布，再复跑一轮验证稳定性。`,
+                sameModel && !sameDs
+                  ? `结论可回写数据集管理：${dsWinner?.name || "-"} 作为「${a.modelType}」场景的优先训练集。`
+                  : `如需确认结论稳定性，建议固定当前配置再跑 1 次，观察主指标波动是否小于 0.5pt。`,
+              ]
+            : [
+                "两任务指标差异在 0.05pt 以内，视为同一水平，暂不建议据此替换现有配置。",
+                "如需拉开差距，建议扩大数据集规模或增加训练轮次后再对比。",
+              ]
+          ).map((t, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex", gap: 8, padding: "9px 12px", borderRadius: 6,
+                background: C.bg, border: `1px solid ${C.borderSoft}`,
+                fontSize: 12, color: C.sub, lineHeight: 1.7,
+              }}
+            >
+              <CheckCircle2 size={13} style={{ flexShrink: 0, marginTop: 2, color: C.success }} />
+              {t}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <FileCheck2 size={14} style={{ color: C.success }} />
+          <span style={{ fontSize: 11.5, color: C.sub }}>
+            报告内容：两任务配置 / Loss 曲线对比 / 指标差异 / 结论与建议
+          </span>
+          <div style={{ flex: 1 }} />
+          <Btn size="sm" icon={<Download size={13} />} onClick={() => toast.success("对比分析报告（PDF）已开始下载")}>
+            下载
+          </Btn>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+// ================================================================
+// 新建训练评估（3 步向导）
+// ================================================================
+function TrainCreate({
+  onDone, onCancel,
+}: {
+  onDone: (e: TrainExp) => void;
+  onCancel: () => void;
+}) {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    name: "",
+    datasetId: "",
+    modelType: "",
+    framework: "",
+    preset: TRAIN_PRESETS[0],
+    epochs: 60,
+    batch: 16,
+    lr: "2e-4",
+    patience: 8,
+    valRatio: 15,
+  });
+  const [evalMetrics, setEvalMetrics] = useState<string[]>(["准确率", "精确率", "召回率", "F1"]);
+
+  const patch = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
+  const ds = expDataset(form.datasetId);
+
+  const missing = (() => {
+    const out: string[] = [];
+    if (!form.name.trim()) out.push("试验名称");
+    if (!form.datasetId) out.push("目标数据集");
+    if (!form.modelType) out.push("模型类型");
+    if (!form.framework) out.push("训练框架");
+    if (!evalMetrics.length) out.push("评估指标");
+    return out;
+  })();
+
+  const submit = () => {
+    if (missing.length) {
+      toast.error(`请完善：${missing.join("、")}`);
+      return;
+    }
+    const id = `TE-2026-${String(15 + Math.floor(TRAIN_EXPS.length)).padStart(3, "0")}`;
+    const exp: TrainExp = {
+      id,
+      name: form.name.trim(),
+      datasetId: form.datasetId,
+      modelType: form.modelType,
+      framework: form.framework,
+      preset: form.preset,
+      status: "运行中",
+      progress: 2,
+      gpu: "4 × A100 80G",
+      startedAt: "刚刚",
+      duration: "0m",
+      mainLabel: evalMetrics.includes("准确率") ? "准确率" : evalMetrics[0],
+      mainValue: 0,
+      metrics: [],
+      process: {
+        bestEpoch: 0, totalEpochs: form.epochs, earlyStop: false, patience: form.patience,
+        trainAcc: 0, valAcc: 0, gap: 0, overfit: "低", stopReason: "训练环境配置中",
+      },
+      curves: [],
+      conclusion: "试验已提交，系统正在自动配置训练环境。",
+      advice: [],
+    };
+    onDone(exp);
+  };
+
+  const steps = ["数据集与模型", "训练与评估配置", "确认并启动"];
+
+  return (
+    <Panel
+      title="新建训练评估试验"
+      desc="选好数据集与模型类型后，训练环境、依赖与资源由平台自动配置"
+      extra={<Btn size="sm" onClick={onCancel}>取消</Btn>}
+    >
       {/* 步骤条 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 28 }}>
-        {["选择模型与数据集", "配置训练参数", "确认并启动"].map((s, i) => {
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 22 }}>
+        {steps.map((s, i) => {
           const num = i + 1;
-          const isDone = step > num;
-          const isActive = step === num;
+          const done = step > num;
+          const on = step === num;
           return (
             <React.Fragment key={s}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: isDone ? "#16a34a" : isActive ? "#f59e0b" : "#e2e8f0", color: isDone || isActive ? "#fff" : "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
-                  {isDone ? <CheckCircle2 size={14} /> : num}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: isActive ? 600 : 400, color: isDone || isActive ? "#1e293b" : "#94a3b8" }}>{s}</span>
+                <span
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%", fontSize: 11, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: done ? C.success : on ? C.primary : C.borderSoft,
+                    color: done || on ? "#fff" : C.faint,
+                  }}
+                >
+                  {done ? <CheckCircle2 size={13} /> : num}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: on ? 600 : 400, color: on || done ? C.text : C.faint }}>{s}</span>
               </div>
-              {i < 2 && <div style={{ flex: 1, height: 2, background: isDone ? "#bbf7d0" : "#e2e8f0", margin: "0 16px" }} />}
+              {i < steps.length - 1 && (
+                <div style={{ flex: 1, height: 2, background: done ? `${C.success}44` : C.borderSoft, margin: "0 14px" }} />
+              )}
             </React.Fragment>
           );
         })}
       </div>
 
-      {/* 任务名称 */}
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 20, marginBottom: 16 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>训练任务名称 *</label>
-        <input value={config.name} onChange={e => update("name", e.target.value)} placeholder="例如: Qwen2.5-7B 中文对话微调"
-          style={{ width: "100%", height: 36, padding: "0 12px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-      </div>
-
-      {/* 步骤1: 模型与数据集 */}
       {step === 1 && (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 24 }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>选择基础模型 *</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-              {MODEL_OPTIONS.map(m => (
-                <div key={m} onClick={() => update("model", m)}
-                  style={{ padding: "10px 12px", borderRadius: 7, border: `1px solid ${config.model === m ? "#f59e0b" : "#e2e8f0"}`, background: config.model === m ? "#fffbeb" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: config.model === m ? 600 : 400, color: config.model === m ? "#d97706" : "#334155", transition: "all 0.1s", textAlign: "center" }}>
-                  {m}
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <Field label="试验名称" required>
+            <TextInput value={form.name} onChange={(v) => patch("name", v)} placeholder="例如：交通视频行为识别 · YOLOv8 基线" />
+          </Field>
 
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>选择训练数据集 *</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {DATASET_OPTIONS.map(d => (
-                <div key={d.label} onClick={() => update("dataset", d.label)}
-                  style={{ padding: "12px 16px", borderRadius: 7, border: `1px solid ${config.dataset === d.label ? "#f59e0b" : "#e2e8f0"}`, background: config.dataset === d.label ? "#fffbeb" : "#fff", cursor: "pointer", transition: "all 0.1s" }}>
-                  <div style={{ fontSize: 13, fontWeight: config.dataset === d.label ? 600 : 400, color: config.dataset === d.label ? "#d97706" : "#1e293b" }}>{d.label}</div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{d.desc}</div>
-                </div>
-              ))}
-            </div>
+          <SectionTitle step="1" title="目标数据集" desc="来自数据发布中心的数据集管理，仅可选已发布数据集" />
+          <Grid cols={2}>
+            <Field label="数据集" required>
+              <Sel
+                value={form.datasetId}
+                onChange={(v) => {
+                  patch("datasetId", v);
+                  const d = expDataset(v);
+                  if (d && !form.name) patch("name", `${d.name} · ${form.modelType || "训练评估"}`);
+                }}
+                options={EXP_DATASETS.filter((d) => d.id).map((d) => ({
+                  value: d.id,
+                  label: `${d.id} · ${d.name}`,
+                }))}
+                placeholder="请选择数据集"
+              />
+            </Field>
+            <Field label="数据模态（随数据集带入）">
+              <div style={{ display: "flex", alignItems: "center", height: 34, fontSize: 12.5, color: C.sub }}>
+                {ds ? `${ds.dataType} · ${ds.scale} · 质量总分 ${ds.quality.score}` : "选择数据集后自动带入"}
+              </div>
+            </Field>
+          </Grid>
 
-            {/* ====== 断点1修复：导入数据集管理中的数据集 ====== */}
-            <DatasetPicker
-              selected={config.dataset}
-              onSelect={(ds) => update("dataset", ds)}
-            />
-          </div>
+          <SectionTitle step="2" title="模型类型与训练框架" desc="框架决定自动配置的运行时镜像与依赖版本" />
+          <Grid cols={2}>
+            <Field label="模型类型" required>
+              <Sel value={form.modelType} onChange={(v) => patch("modelType", v)} options={MODEL_TYPES} placeholder="请选择模型类型" />
+            </Field>
+            <Field label="训练框架" required>
+              <Sel value={form.framework} onChange={(v) => patch("framework", v)} options={TRAIN_FRAMEWORKS} placeholder="请选择训练框架" />
+            </Field>
+          </Grid>
+          <Field label="标准化训练流程" hint="平台内置流程：数据加载 → 划分 → 训练 → 指标计算 → 报告生成">
+            <Sel value={form.preset} onChange={(v) => patch("preset", v)} options={TRAIN_PRESETS} />
+          </Field>
 
-          <div style={{ marginTop: 20 }}>
-            <button onClick={() => setStep(2)} disabled={!config.model || !config.dataset}
-              style={{ padding: "9px 24px", borderRadius: 7, border: "none", background: !config.model || !config.dataset ? "#e2e8f0" : "#f59e0b", color: "#fff", fontSize: 13, fontWeight: 600, cursor: !config.model || !config.dataset ? "not-allowed" : "pointer" }}>
-              下一步: 配置参数 →
-            </button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
+            <Btn onClick={onCancel}>取消</Btn>
+            <Btn
+              tone="primary"
+              disabled={!form.datasetId || !form.modelType || !form.framework}
+              onClick={() => setStep(2)}
+            >
+              下一步：训练与评估配置
+            </Btn>
           </div>
         </div>
       )}
 
-      {/* 步骤2: 训练参数 */}
       {step === 2 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 24 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <Sparkles size={14} color="#f59e0b" /> 训练算法
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
-              {ALGORITHMS.map(a => (
-                <div key={a.value} onClick={() => update("algorithm", a.value)}
-                  style={{ padding: "10px 12px", borderRadius: 7, border: `1px solid ${config.algorithm === a.value ? "#f59e0b" : "#e2e8f0"}`, background: config.algorithm === a.value ? "#fffbeb" : "#fff", cursor: "pointer", transition: "all 0.1s" }}>
-                  <div style={{ fontSize: 12, fontWeight: config.algorithm === a.value ? 600 : 400, color: config.algorithm === a.value ? "#d97706" : "#1e293b" }}>{a.label}</div>
-                </div>
-              ))}
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <SectionTitle step="3" title="训练参数" desc="默认值取自所选标准化流程，可按需调整" />
+          <Grid cols={3}>
+            <Field label="训练轮次 Epochs" required>
+              <NumInput value={form.epochs} onChange={(v) => patch("epochs", v)} min={1} />
+            </Field>
+            <Field label="Batch Size">
+              <NumInput value={form.batch} onChange={(v) => patch("batch", v)} min={1} />
+            </Field>
+            <Field label="学习率">
+              <TextInput value={form.lr} onChange={(v) => patch("lr", v)} />
+            </Field>
+            <Field label="早停耐心值（轮）" hint="验证集指标连续 N 轮未提升则早停">
+              <NumInput value={form.patience} onChange={(v) => patch("patience", v)} min={1} />
+            </Field>
+            <Field label="验证集比例">
+              <NumInput value={form.valRatio} onChange={(v) => patch("valRatio", v)} min={5} max={40} />
+            </Field>
+            <Field label="随机种子">
+              <div style={{ display: "flex", alignItems: "center", height: 34, fontSize: 12.5, color: C.sub }}>42（固定，保证可复现）</div>
+            </Field>
+          </Grid>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 5 }}>运算精度</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {PRECISIONS.map(p => (
-                    <div key={p.value} onClick={() => update("precision", p.value)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 5, border: `1px solid ${config.precision === p.value ? "#f59e0b" : "#e2e8f0"}`, background: config.precision === p.value ? "#fffbeb" : "#fff", cursor: "pointer" }}>
-                      <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${config.precision === p.value ? "#f59e0b" : "#cbd5e1"}`, background: config.precision === p.value ? "#f59e0b" : "transparent" }} />
-                      <span style={{ fontSize: 12, color: config.precision === p.value ? "#d97706" : "#334155", fontWeight: config.precision === p.value ? 600 : 400 }}>{p.label}</span>
-                      <span style={{ fontSize: 10, color: "#94a3b8" }}>{p.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 5 }}>优化算法</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {OPTIMIZERS.map(o => (
-                    <div key={o.value} onClick={() => update("optimizer", o.value)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 5, border: `1px solid ${config.optimizer === o.value ? "#f59e0b" : "#e2e8f0"}`, background: config.optimizer === o.value ? "#fffbeb" : "#fff", cursor: "pointer" }}>
-                      <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${config.optimizer === o.value ? "#f59e0b" : "#cbd5e1"}`, background: config.optimizer === o.value ? "#f59e0b" : "transparent" }} />
-                      <span style={{ fontSize: 12, color: config.optimizer === o.value ? "#d97706" : "#334155", fontWeight: config.optimizer === o.value ? 600 : 400 }}>{o.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 5 }}>微调方式</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {FINE_TUNE_METHODS.map(m => (
-                    <div key={m.value} onClick={() => update("fineTuneMethod", m.value)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 5, border: `1px solid ${config.fineTuneMethod === m.value ? "#f59e0b" : "#e2e8f0"}`, background: config.fineTuneMethod === m.value ? "#fffbeb" : "#fff", cursor: "pointer" }}>
-                      <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${config.fineTuneMethod === m.value ? "#f59e0b" : "#cbd5e1"}`, background: config.fineTuneMethod === m.value ? "#f59e0b" : "transparent" }} />
-                      <span style={{ fontSize: 12, color: config.fineTuneMethod === m.value ? "#d97706" : "#334155", fontWeight: config.fineTuneMethod === m.value ? 600 : 400 }}>{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <Field label="评估指标" required hint="勾选的指标会在训练结束后计算并写入评估报告">
+            <Chips
+              options={["准确率", "精确率", "召回率", "F1", "mAP@0.5", "Dice", "WER", "MAE"]}
+              value={evalMetrics}
+              onChange={setEvalMetrics}
+              multi
+            />
+          </Field>
 
-          {/* 分布式训练 */}
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 24 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <Server size={14} color="#f59e0b" /> 分布式训练配置
-            </div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              {DISTRIBUTED_MODES.map(m => {
-                const Icon = m.icon;
-                return (
-                  <div key={m.value} onClick={() => update("distributed", m.value)}
-                    style={{ flex: 1, padding: "12px", borderRadius: 7, border: `1px solid ${config.distributed === m.value ? "#f59e0b" : "#e2e8f0"}`, background: config.distributed === m.value ? "#fffbeb" : "#fff", cursor: "pointer", textAlign: "center" }}>
-                    <Icon size={20} color={config.distributed === m.value ? "#d97706" : "#94a3b8"} style={{ display: "block", margin: "0 auto 6px" }} />
-                    <div style={{ fontSize: 12, fontWeight: config.distributed === m.value ? 600 : 400, color: config.distributed === m.value ? "#d97706" : "#334155" }}>{m.label}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-              {[
-                { label: "GPU数量", key: "gpu_count", type: "number", min: 1, max: 64 },
-                { label: "学习率", key: "learning_rate", type: "text", placeholder: "2e-5" },
-                { label: "Batch Size", key: "batch_size", type: "number", min: 1 },
-                { label: "训练轮次", key: "epochs", type: "number", min: 1 },
-                { label: "最大序列长度", key: "max_seq_len", type: "number", min: 128 },
-                { label: "Warmup比例", key: "warmup_ratio", type: "number", min: 0, max: 1, step: 0.05 },
-              ].map(f => (
-                <div key={f.key}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4 }}>{f.label}</label>
-                  <input type={f.type} value={(config as any)[f.key]} step={f.step} min={f.min} max={f.max}
-                    onChange={e => update(f.key, f.type === "number" ? Number(e.target.value) : e.target.value)}
-                    placeholder={f.placeholder}
-                    style={{ width: "100%", height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 12, outline: "none", background: "#f8fafc", boxSizing: "border-box" }} />
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-              <div onClick={() => update("use_flash_attention", !config.use_flash_attention)}
-                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                <div style={{ width: 36, height: 20, borderRadius: 10, background: config.use_flash_attention ? "#f59e0b" : "#e2e8f0", padding: 2, display: "flex", alignItems: "center", justifyContent: config.use_flash_attention ? "flex-end" : "flex-start", transition: "all 0.2s" }}>
-                  <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff" }} />
-                </div>
-                <span style={{ fontSize: 12, color: "#334155" }}>启用 FlashAttention-2 加速</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <button onClick={() => setStep(1)} style={{ padding: "9px 20px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 13, cursor: "pointer" }}>← 上一步</button>
-            <button onClick={() => setStep(3)} style={{ padding: "9px 20px", borderRadius: 7, border: "none", background: "#f59e0b", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>下一步: 确认启动 →</button>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
+            <Btn onClick={() => setStep(1)}>← 上一步</Btn>
+            <Btn tone="primary" onClick={() => setStep(3)}>下一步：确认并启动</Btn>
           </div>
         </div>
       )}
 
-      {/* 步骤3: 确认 */}
       {step === 3 && (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 28 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 20px 0" }}>确认训练配置</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
-            {[
-              { label: "任务名称", value: config.name || "-" },
-              { label: "基础模型", value: config.model || "-" },
-              { label: "训练数据集", value: config.dataset || "-" },
-              { label: "训练算法", value: ALGORITHMS.find(a => a.value === config.algorithm)?.label || "-" },
-              { label: "运算精度", value: config.precision },
-              { label: "优化算法", value: config.optimizer },
-              { label: "微调方式", value: FINE_TUNE_METHODS.find(m => m.value === config.fineTuneMethod)?.label || "-" },
-              { label: "GPU数量", value: `${config.gpu_count} 卡` },
-              { label: "学习率", value: config.learning_rate },
-              { label: "Batch Size", value: String(config.batch_size) },
-              { label: "训练轮次", value: `${config.epochs} 轮` },
-              { label: "FlashAttention-2", value: config.use_flash_attention ? "启用" : "禁用" },
-            ].map(item => (
-              <div key={item.label} style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 7 }}>
-                <div style={{ fontSize: 11, color: "#94a3b8" }}>{item.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginTop: 2 }}>{item.value}</div>
-              </div>
-            ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <SectionTitle step="4" title="自动环境配置结果" desc="平台已根据数据集与模型类型生成运行环境" extra={<Tag tone={C.success}>已就绪</Tag>} />
+          <Grid cols={2}>
+            <Panel title="训练环境" bodyStyle={{ padding: "12px 16px" }}>
+              <Kv k="运行时镜像" v={`tf-train-${form.framework.split(" ")[0].toLowerCase()}:2.3-cu121`} w={86} />
+              <Kv k="框架" v={form.framework} w={86} />
+              <Kv k="CUDA / 驱动" v="12.1 / 550.54" w={86} />
+              <Kv k="计算资源" v="4 × A100 80G（自动分配）" w={86} />
+              <Kv k="预计时长" v={`约 ${Math.max(1, Math.round(form.epochs * 2.6))} 分钟`} w={86} />
+            </Panel>
+            <Panel title="数据与评估" bodyStyle={{ padding: "12px 16px" }}>
+              <Kv k="数据集" v={ds ? `${ds.id} · ${ds.name}` : "-"} w={86} />
+              <Kv k="数据加载" v={`自动解析 ${ds?.dataType || "-"} 格式 · 按 ${100 - form.valRatio}/${form.valRatio} 划分`} w={86} />
+              <Kv k="评估指标" v={evalMetrics.join("、")} w={86} />
+              <Kv k="训练流程" v={form.preset} w={86} />
+              <Kv k="报告" v="训练结束后自动生成（曲线 / 混淆矩阵 / 结论）" w={86} />
+            </Panel>
+          </Grid>
+
+          <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.8 }}>
+            提交后试验进入「运行中」，平台按流程自动完成环境拉起、数据加载、训练与指标计算；
+            训练结束自动生成评估报告，并标记早停轮次与过拟合程度。
           </div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={() => setStep(2)} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", fontSize: 13, cursor: "pointer" }}>← 修改配置</button>
-            <button onClick={submit} style={{ flex: 2, padding: "10px", borderRadius: 7, border: "none", background: "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Play size={14} />确认并启动训练
-            </button>
+
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, paddingTop: 4 }}>
+            <Btn onClick={() => setStep(2)}>← 上一步</Btn>
+            <Btn tone="primary" icon={<Plus size={13} />} onClick={submit}>确认并启动试验</Btn>
           </div>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 
-// ============================================================
-// Tab 3: 实验监控
-// ============================================================
-function MonitorTab() {
-  const lossData = [
-    { step: 0, value: 3.45 }, { step: 100, value: 2.87 }, { step: 200, value: 2.45 },
-    { step: 300, value: 1.98 }, { step: 400, value: 1.67 }, { step: 500, value: 1.43 },
-    { step: 600, value: 1.23 }, { step: 700, value: 1.08 }, { step: 800, value: 0.96 },
-    { step: 900, value: 0.87 }, { step: 1000, value: 0.81 },
-  ];
-  const maxLoss = Math.max(...lossData.map(d => d.value));
-  const w = 700, h = 180;
-  const pts = lossData.map((d, i) => ({ x: (i / (lossData.length - 1)) * w, y: h - (d.value / maxLoss) * h }));
+// ================================================================
+// 详情
+// ================================================================
+function TrainDetail({ exp, onBack }: { exp: TrainExp; onBack: () => void }) {
+  const ds = expDataset(exp.datasetId);
+  const maxCell = exp.confusion ? Math.max(...exp.confusion.matrix.flat()) : 1;
 
   return (
-    <div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>实验监控面板</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        {[
-          { label: "当前步数", value: "600", icon: Activity, color: "#2563eb" },
-          { label: "当前 Loss", value: "1.23", icon: LineChart, color: "#dc2626" },
-          { label: "学习率", value: "2e-5", icon: Zap, color: "#f59e0b" },
-          { label: "GPU利用率", value: "94%", icon: Cpu, color: "#16a34a" },
-        ].map(m => (
-          <div key={m.label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <m.icon size={14} color={m.color} />
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>{m.label}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Panel bodyStyle={{ padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <IconBtn icon={<ArrowLeft size={15} />} label="返回试验列表" onClick={onBack} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{exp.name}</span>
+              <StatusTag status={exp.status} />
+              <Tag tone={C.sub}>{exp.id}</Tag>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b" }}>{m.value}</div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
+              {ds?.id} · {ds?.name} ｜ {exp.modelType} ｜ {exp.framework} ｜ {exp.gpu} ｜ 开始 {exp.startedAt} ｜ 耗时 {exp.duration}
+            </div>
           </div>
-        ))}
-      </div>
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 16 }}>Loss 曲线</div>
-        <svg width="100%" viewBox={`0 0 ${w} ${h + 30}`} style={{ overflow: "visible" }}>
-          {pts.map((p, i) => {
-            const next = pts[i + 1];
-            return next ? (
-              <line key={i} x1={p.x} y1={p.y} x2={next.x} y2={next.y} stroke="#2563eb" strokeWidth="2" />
-            ) : null;
-          })}
-          {pts.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="3" fill="#2563eb" />
-          ))}
-          <text x={0} y={h + 20} fill="#94a3b8" fontSize="10">Step 0</text>
-          <text x={w} y={h + 20} fill="#94a3b8" fontSize="10" textAnchor="end">Step 1000</text>
-          <text x={0} y={12} fill="#94a3b8" fontSize="10">{maxLoss.toFixed(2)}</text>
-          <text x={0} y={h} fill="#94a3b8" fontSize="10">0</text>
-        </svg>
-        <div style={{ display: "flex", justifyContent: "space-around", marginTop: 16, fontSize: 11, color: "#94a3b8" }}>
-          <span>当前: <strong style={{ color: "#dc2626" }}>1.23</strong></span>
-          <span>最低: <strong style={{ color: "#16a34a" }}>0.81</strong></span>
-          <span>下降: <strong style={{ color: "#2563eb" }}>64.3%</strong></span>
-          <span>速度: <strong style={{ color: "#f59e0b" }}>~120 steps/min</strong></span>
+          <Btn
+            size="sm"
+            icon={<Download size={13} />}
+            onClick={() => toast.success("训练评估报告（PDF）已开始下载")}
+            disabled={!exp.metrics.length}
+          >
+            下载评估报告
+          </Btn>
         </div>
-      </div>
+      </Panel>
+
+      <Grid cols={4}>
+        <Metric icon={<Target size={15} />} label={exp.mainLabel} value={exp.metrics.length ? pct(exp.mainValue) : "--"} tone={C.primary} hint="测试集计算结果" />
+        <Metric icon={<Gauge size={15} />} label="精确率 / 召回率" value={exp.metrics.length > 1 ? `${pct(exp.metrics[1].value)} / ${pct(exp.metrics[2].value)}` : "--"} tone={C.teal} hint="核心性能指标" />
+        <Metric
+          icon={<Clock size={15} />}
+          label="最佳轮次 / 早停"
+          value={exp.process.bestEpoch ? `${exp.process.bestEpoch} / ${exp.process.totalEpochs}` : "--"}
+          tone={C.warn}
+          hint={exp.process.earlyStop ? `早停触发于第 ${exp.process.earlyStopEpoch} 轮` : "未触发早停"}
+        />
+        <Metric
+          icon={<Activity size={15} />}
+          label="过拟合程度"
+          value={exp.metrics.length ? exp.process.overfit : "--"}
+          tone={OVERFIT_TONE[exp.process.overfit]}
+          hint={exp.metrics.length ? `train-val 差距 ${exp.process.gap.toFixed(1)}pt` : "无有效结果"}
+        />
+      </Grid>
+
+      <Grid cols={2}>
+        <Panel title="训练曲线 · 损失" desc="train_loss / val_loss 随轮次变化">
+          {exp.curves.length ? (
+            <>
+              <LineChart
+                labels={exp.curves.map((c) => `E${c.epoch}`)}
+                series={[
+                  { name: "train_loss", color: C.primary, data: exp.curves.map((c) => c.trainLoss) },
+                  { name: "val_loss", color: C.danger, data: exp.curves.map((c) => c.valLoss) },
+                ]}
+                height={190}
+              />
+              <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11.5 }}>
+                <LegendItem color={C.primary} text="train_loss" />
+                <LegendItem color={C.danger} text="val_loss" />
+              </div>
+            </>
+          ) : (
+            <Empty text="训练尚未产生曲线" />
+          )}
+        </Panel>
+        <Panel title="训练曲线 · 准确率" desc="train_acc / val_acc 随轮次变化">
+          {exp.curves.length ? (
+            <>
+              <LineChart
+                labels={exp.curves.map((c) => `E${c.epoch}`)}
+                series={[
+                  { name: "train_acc", color: C.teal, data: exp.curves.map((c) => c.trainAcc) },
+                  { name: "val_acc", color: C.warn, data: exp.curves.map((c) => c.valAcc) },
+                ]}
+                height={190}
+                yUnit="%"
+              />
+              <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11.5 }}>
+                <LegendItem color={C.teal} text="train_acc" />
+                <LegendItem color={C.warn} text="val_acc" />
+              </div>
+            </>
+          ) : (
+            <Empty text="训练尚未产生曲线" />
+          )}
+        </Panel>
+      </Grid>
+
+      <Grid cols={exp.confusion ? "1.1fr 1fr" : "1fr"}>
+        {exp.confusion && (
+          <Panel title="混淆矩阵" desc="测试集逐类判定结果，深色为高命中">
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", fontSize: 11.5 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: "6px 8px", color: C.faint, fontWeight: 500, textAlign: "left" }}>真实 \ 预测</th>
+                    {exp.confusion.labels.map((l) => (
+                      <th key={l} style={{ padding: "6px 8px", color: C.sub, fontWeight: 500, whiteSpace: "nowrap" }}>{l}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {exp.confusion.matrix.map((row, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: "6px 8px", color: C.sub, whiteSpace: "nowrap" }}>{exp.confusion!.labels[i]}</td>
+                      {row.map((v, j) => {
+                        const h = heatColor(v, maxCell);
+                        return (
+                          <td
+                            key={j}
+                            style={{
+                              padding: "6px 8px", textAlign: "center", background: h.bg, color: h.fg,
+                              fontWeight: i === j ? 700 : 400, borderRadius: 3,
+                            }}
+                          >
+                            {v}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>对角线为正确判定；非对角线数值反映类别混淆。</div>
+          </Panel>
+        )}
+
+        <Panel title="训练过程指标" desc="用于判断训练是否收敛、是否过拟合">
+          <Kv k="最佳轮次" v={`第 ${exp.process.bestEpoch} / ${exp.process.totalEpochs} 轮`} w={92} />
+          <Kv
+            k="早停标记"
+            v={
+              exp.process.earlyStop ? (
+                <Tag tone={C.warn}>已触发 · 第 {exp.process.earlyStopEpoch} 轮</Tag>
+              ) : (
+                <Tag tone={C.faint}>未触发（耐心值 {exp.process.patience}）</Tag>
+              )
+            }
+            w={92}
+          />
+          <Kv k="train_acc" v={exp.metrics.length ? pct(exp.process.trainAcc) : "--"} w={92} />
+          <Kv k="val_acc" v={exp.metrics.length ? pct(exp.process.valAcc) : "--"} w={92} />
+          <Kv k="过拟合程度" v={<Tag tone={OVERFIT_TONE[exp.process.overfit]}>{exp.process.overfit}（差距 {exp.process.gap.toFixed(1)}pt）</Tag>} w={92} />
+          <Kv k="停止原因" v={exp.process.stopReason} w={92} />
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.borderSoft}` }}>
+            <div style={{ fontSize: 11.5, color: C.faint, marginBottom: 6 }}>Loss 下降趋势</div>
+            <Spark data={exp.curves.map((c) => c.trainLoss)} color={C.primary} w={280} h={38} />
+          </div>
+        </Panel>
+      </Grid>
+
+      <Panel
+        title="训练评估结论"
+        desc="自动生成，随评估报告一同归档"
+        extra={<Tag tone={C.success}>报告已生成</Tag>}
+      >
+        <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.9, marginBottom: 12 }}>{exp.conclusion}</div>
+        {exp.advice.length > 0 && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>数据集优化方向</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {exp.advice.map((a, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex", gap: 8, padding: "9px 12px", borderRadius: 6,
+                    background: C.warnSoft, border: `1px solid ${C.warn}22`,
+                    fontSize: 12, color: "#92400e", lineHeight: 1.7,
+                  }}
+                >
+                  <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2 }} />
+                  {a}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.borderSoft}`, display: "flex", alignItems: "center", gap: 10 }}>
+          <FileCheck2 size={14} style={{ color: C.success }} />
+          <span style={{ fontSize: 11.5, color: C.sub }}>
+            报告内容：训练配置 / 训练曲线 / 混淆矩阵 / 核心指标 / 过程指标 / 结论与建议
+          </span>
+          <div style={{ flex: 1 }} />
+          <Btn size="sm" icon={<Download size={13} />} onClick={() => toast.success("训练评估报告（PDF）已开始下载")}>
+            下载
+          </Btn>
+        </div>
+      </Panel>
     </div>
   );
 }
 
-// ============================================================
-// 主页面
-// ============================================================
-export default function ModelTrainingPage() {
-  const [tab, setTab] = useState<"list" | "create" | "monitor">("list");
-
+function LegendItem({ color, text }: { color: string; text: string }) {
   return (
-    <main style={{ flex: 1, overflowY: "auto", background: "#f8fafc", minHeight: "100vh" }}>
-      <div style={{ padding: "24px 32px 0", background: "#f8fafc" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Brain size={20} color="#fff" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>模型训练</h1>
-            <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0 0" }}>训练任务管理 · 分布式训练 · 实验监控</p>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 4, borderBottom: "2px solid #e2e8f0" }}>
-          {[
-            { key: "list" as const, label: "训练任务", icon: Database },
-            { key: "create" as const, label: "新建训练", icon: Plus },
-            { key: "monitor" as const, label: "实验监控", icon: BarChart3 },
-          ].map(t => {
-            const Icon = t.icon;
-            const isActive = tab === t.key;
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", border: "none", background: "transparent", borderBottom: `2px solid ${isActive ? "#f59e0b" : "transparent"}`, color: isActive ? "#f59e0b" : "#64748b", fontSize: 13, fontWeight: isActive ? 600 : 400, cursor: "pointer", marginBottom: -2 }}>
-                <Icon size={14} />{t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div style={{ padding: "20px 32px 32px" }}>
-        {tab === "list" && <TrainingListTab onCreate={() => setTab("create")} />}
-        {tab === "create" && <CreateTrainingTab onBack={() => setTab("list")} />}
-        {tab === "monitor" && <MonitorTab />}
-      </div>
-    </main>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.sub }}>
+      <span style={{ width: 10, height: 2, background: color, borderRadius: 2 }} />
+      {text}
+    </span>
   );
 }
 
-// ============================================================
-// 断点1修复：数据集管理导入选择器
-// ============================================================
-function DatasetPicker({ selected, onSelect }: { selected: string; onSelect: (ds: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [datasets, setDatasets] = useState<any[]>([]);
-  const [filter, setFilter] = useState("");
+// ================================================================
+// 主页面
+// ================================================================
+export default function ModelTrainingEvalPage() {
+  const [exps, setExps] = useState<TrainExp[]>(TRAIN_EXPS);
+  const [tab, setTab] = useState<TabKey>("list");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [comparePair, setComparePair] = useState<string[]>(["TE-2026-008", "TE-2026-012"]);
 
-  useEffect(() => {
-    if (open && datasets.length === 0) {
-      try {
-        const raw = localStorage.getItem("taskforge_datasets");
-        if (raw) {
-          setDatasets(JSON.parse(raw));
-        }
-      } catch { /* ignore */ }
-    }
-  }, [open, datasets.length]);
+  const done = exps.filter((e) => e.status === "已完成" && e.metrics.length > 0);
+  const running = exps.filter((e) => e.status === "运行中");
+  const avgMain = avg(done.map((e) => e.mainValue));
+  const reportCount = done.length;
 
-  const filtered = filter
-    ? datasets.filter((d: any) => d.name?.includes(filter) || d.type?.includes(filter))
-    : datasets;
+  const stop = (id: string) => {
+    setExps((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, status: "已终止", process: { ...e.process, stopReason: "管理员手动终止" } } : e))
+    );
+    toast.success("试验已终止");
+  };
+
+  const detail = exps.find((e) => e.id === detailId) || null;
 
   return (
-    <>
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #e2e8f0" }}>
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 14px", borderRadius: 7,
-            border: "1px solid #2563eb", background: "#eff6ff",
-            color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer",
-          }}>
-          <Link2 size={13} />从数据集管理导入 →
-        </button>
-        {selected && !DATASET_OPTIONS.some(d => d.label === selected) && (
-          <span style={{ marginLeft: 10, fontSize: 12, color: "#16a34a" }}>
-            ✓ 已选择：<strong>{selected}</strong>
-          </span>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg }}>
+      <ExpHeader
+        icon={<Brain size={17} color="#fff" />}
+        title="模型训练评估"
+        subtitle="数据中试中心 · 模型试验 ｜ 基于数据集的模型训练与效果评估，自动生成训练评估报告"
+        right={
+          <>
+            <Btn size="sm" onClick={() => setTab("compare")} icon={<ArrowLeftRight size={13} />}>对照实验</Btn>
+            <Btn size="sm" tone="primary" icon={<Plus size={13} />} onClick={() => { setDetailId(null); setTab("new"); }}>
+              新建训练评估
+            </Btn>
+          </>
+        }
+      />
+
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        {detail ? (
+          <TrainDetail exp={detail} onBack={() => setDetailId(null)} />
+        ) : (
+          <>
+            <Grid cols={4} style={{ marginBottom: 12 }}>
+              <Metric icon={<Database size={15} />} label="训练评估试验" value={exps.length} unit="个" hint={`已完成 ${done.length} · 运行中 ${running.length}`} />
+              <Metric icon={<Activity size={15} />} label="平均主指标" value={avgMain ? pct(avgMain) : "--"} tone={C.teal} hint="已完成试验的主指标均值" />
+              <Metric icon={<Gauge size={15} />} label="平均过拟合差距" value={`${avg(done.map((e) => e.process.gap)).toFixed(1)}pt`} tone={C.warn} hint="train-val 准确率差值" />
+              <Metric icon={<FileCheck2 size={15} />} label="自动评估报告" value={reportCount} unit="份" tone={C.purple} hint="训练结束自动生成" />
+            </Grid>
+
+            <Tabs<TabKey>
+              value={tab}
+              onChange={(k) => setTab(k)}
+              items={[
+                { key: "list", label: "训练试验", icon: <Layers size={13} />, count: exps.length },
+                { key: "compare", label: "对照实验", icon: <ArrowLeftRight size={13} /> },
+                { key: "new", label: "新建试验", icon: <Plus size={13} /> },
+              ]}
+            />
+
+            {tab === "list" && (
+              <TrainList
+                exps={exps}
+                onOpen={(id) => setDetailId(id)}
+                onCompare={(id) => {
+                  setComparePair((prev) => [prev[0] || id, id]);
+                  setTab("compare");
+                  toast.success("已作为任务 B 加入对比");
+                }}
+                onStop={stop}
+              />
+            )}
+            {tab === "compare" && (
+              <TrainCompare exps={exps} pair={comparePair} setPair={setComparePair} onOpen={(id) => {
+                setDetailId(id);
+              }} />
+            )}
+            {tab === "new" && (
+              <TrainCreate
+                onCancel={() => setTab("list")}
+                onDone={(e) => {
+                  setExps((prev) => [e, ...prev]);
+                  setTab("list");
+                  toast.success(`试验「${e.name}」已提交，训练环境自动配置中`);
+                }}
+              />
+            )}
+          </>
         )}
       </div>
-
-      {open && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 200,
-          background: "rgba(0,0,0,0.4)", display: "flex",
-          alignItems: "center", justifyContent: "center",
-        }}>
-          <div style={{
-            background: "#fff", borderRadius: 14,
-            width: 600, maxHeight: "70vh",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            display: "flex", flexDirection: "column",
-          }}>
-            {/* 标题栏 */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Database size={18} color="#2563eb" />
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>从数据集管理导入</span>
-              </div>
-              <button onClick={() => setOpen(false)} style={{ padding: 6, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontSize: 18, lineHeight: 1 }}>×</button>
-            </div>
-            {/* 搜索 */}
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
-              <div style={{ position: "relative" }}>
-                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-                <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="搜索数据集名称"
-                  style={{ width: "100%", height: 36, paddingLeft: 34, paddingRight: 10, borderRadius: 6, border: "1px solid #e2e8f0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-              </div>
-            </div>
-            {/* 列表 */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px" }}>
-              {filtered.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8", fontSize: 13 }}>
-                  {datasets.length === 0 ? "数据集管理中暂无数据集" : "无匹配结果"}
-                </div>
-              ) : filtered.map((d: any) => (
-                <div key={d.id} onClick={() => { onSelect(d.name || d.id); setOpen(false); }}
-                  style={{
-                    padding: "10px 14px", borderRadius: 8, marginBottom: 4, cursor: "pointer",
-                    border: `1px solid ${(d.name || d.id) === selected ? "#2563eb" : "transparent"}`,
-                    background: (d.name || d.id) === selected ? "#eff6ff" : "#f8fafc",
-                    transition: "all 0.1s",
-                  }}
-                  onMouseEnter={e => { if ((d.name || d.id) !== selected) e.currentTarget.style.background = "#f1f5f9"; }}
-                  onMouseLeave={e => { if ((d.name || d.id) !== selected) e.currentTarget.style.background = "#f8fafc"; }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{d.name || d.id}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{d.type || d.category || "—"} · {d.count || d.item_count || d.itemCount || 0} 条 · {d.version || "v1.0"}</div>
-                    </div>
-                    {d.status && (
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: d.status === "已发布" ? "#f0fdf4" : "#f8fafc", color: d.status === "已发布" ? "#16a34a" : "#94a3b8", fontWeight: 600 }}>
-                        {d.status}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }

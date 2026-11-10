@@ -1,49 +1,46 @@
 "use client";
+
+import React from "react";
 import Link from "next/link";
-import { Cpu, Brain, BarChart3, Database, TrendingUp, ChevronRight, RefreshCw, GitBranch, FlaskConical, Rocket, HardDrive } from "lucide-react";
+import {
+  Cpu, Brain, Rocket, Sparkles, ArrowRight, Database, FlaskConical,
+  HardDrive, Activity, FileCheck2, TrendingUp, Target,
+} from "lucide-react";
 import ReactECharts from "echarts-for-react";
 
-// ── 指标卡片数据 ──
-const METRIC_CARDS = [
-  { label: "模型总数", value: 24, suffix: "个", trend: "+3 本月", icon: Brain, color: "#f59e0b", bg: "#fffbeb" },
-  { label: "训练任务", value: 6, suffix: "个", trend: "2个运行中", icon: Cpu, color: "#3b82f6", bg: "#eff6ff" },
-  { label: "评测通过率", value: 91.7, suffix: "%", trend: "+4.2 vs 上月", icon: BarChart3, color: "#10b981", bg: "#ecfdf5" },
-  { label: "已发布模型", value: 12, suffix: "个", trend: "成功率 91.7%", icon: Rocket, color: "#8b5cf6", bg: "#f5f3ff" },
+import { C, Panel, Metric, Tag, Bar, Grid } from "@/components/production/ui";
+import { ExpHeader } from "@/components/model-exp/ui";
+import { TRAIN_EXPS, FINETUNE_EXPS, INFER_EXPS, avg, finetuneGain } from "@/components/model-exp/expData";
+
+// ── 近 7 日三类试验趋势 ──
+const WEEKLY = [
+  { date: "10/31", train: 3, finetune: 2, infer: 2 },
+  { date: "11/01", train: 2, finetune: 1, infer: 3 },
+  { date: "11/02", train: 4, finetune: 2, infer: 2 },
+  { date: "11/03", train: 3, finetune: 3, infer: 4 },
+  { date: "11/04", train: 5, finetune: 2, infer: 3 },
+  { date: "11/05", train: 4, finetune: 4, infer: 5 },
+  { date: "11/06", train: 6, finetune: 3, infer: 4 },
 ];
 
-// ── 训练趋势数据 ──
-const WEEKLY_DATA = [
-  { date: "5/14", training: 3, eval: 2, loss: 0.42 },
-  { date: "5/15", training: 4, eval: 3, loss: 0.38 },
-  { date: "5/16", training: 2, eval: 1, loss: 0.35 },
-  { date: "5/17", training: 5, eval: 4, loss: 0.31 },
-  { date: "5/18", training: 3, eval: 2, loss: 0.28 },
-  { date: "5/19", training: 6, eval: 5, loss: 0.25 },
-  { date: "5/20", training: 4, eval: 3, loss: 0.22 },
-];
-
-const lineChartOption = {
+const trendOption = {
   backgroundColor: "transparent",
-  grid: { top: 10, right: 10, bottom: 28, left: 50 },
-  legend: {
-    data: ["训练任务", "评测任务"],
-    bottom: 0, textStyle: { color: "#64748b", fontSize: 11 },
-  },
+  grid: { top: 12, right: 12, bottom: 30, left: 44 },
+  legend: { data: ["训练评估", "微调评估", "推理评估"], bottom: 0, textStyle: { color: "#64748b", fontSize: 11 }, itemWidth: 10, itemHeight: 8 },
   xAxis: {
     type: "category",
-    data: WEEKLY_DATA.map((d: any) => d.date),
+    data: WEEKLY.map((d) => d.date),
     axisLine: { lineStyle: { color: "#e2e8f0" } },
     axisLabel: { color: "#64748b", fontSize: 11 },
     axisTick: { show: false },
   },
-  yAxis: [
-    {
-      type: "value",
-      axisLine: { show: false },
-      axisLabel: { color: "#64748b", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#f1f5f9" } },
-    },
-  ],
+  yAxis: {
+    type: "value",
+    axisLine: { show: false },
+    axisTick: { show: false },
+    axisLabel: { color: "#64748b", fontSize: 11 },
+    splitLine: { lineStyle: { color: "#f1f5f9" } },
+  },
   tooltip: {
     trigger: "axis",
     backgroundColor: "#1e293b",
@@ -51,201 +48,189 @@ const lineChartOption = {
     textStyle: { color: "#f8fafc", fontSize: 12 },
   },
   series: [
-    {
-      name: "训练任务", type: "bar",
-      data: WEEKLY_DATA.map((d: any) => d.training),
-      itemStyle: { color: "#f59e0b", borderRadius: [4, 4, 0, 0] },
-      barWidth: "28%",
-    },
-    {
-      name: "评测任务", type: "bar",
-      data: WEEKLY_DATA.map((d: any) => d.eval),
-      itemStyle: { color: "#10b981", borderRadius: [4, 4, 0, 0] },
-      barWidth: "28%",
-    },
+    { name: "训练评估", type: "bar", data: WEEKLY.map((d) => d.train), itemStyle: { color: "#4f46e5", borderRadius: [3, 3, 0, 0] }, barWidth: "20%" },
+    { name: "微调评估", type: "bar", data: WEEKLY.map((d) => d.finetune), itemStyle: { color: "#8b5cf6", borderRadius: [3, 3, 0, 0] }, barWidth: "20%" },
+    { name: "推理评估", type: "bar", data: WEEKLY.map((d) => d.infer), itemStyle: { color: "#14b8a6", borderRadius: [3, 3, 0, 0] }, barWidth: "20%" },
   ],
 };
 
-// ── 训练任务进度 ──
-const TRAINING_TASKS = [
-  { name: "Qwen2.5-7B微调", done: 85, total: 100, status: "训练中", statusBg: "#fffbeb", statusColor: "#d97706" },
-  { name: "YOLOv8目标检测", done: 100, total: 100, status: "已完成", statusBg: "#dcfce7", statusColor: "#16a34a" },
-  { name: "BERT文本分类", done: 30, total: 100, status: "训练中", statusBg: "#fffbeb", statusColor: "#d97706" },
-];
-
-// ── 评测任务 ──
-const EVAL_TASKS = [
-  { name: "目标检测mAP评测", score: 87.3, threshold: 75, status: "通过", statusBg: "#dcfce7", statusColor: "#16a34a" },
-  { name: "文本分类F1评测", score: 92.1, threshold: 85, status: "通过", statusBg: "#dcfce7", statusColor: "#16a34a" },
-  { name: "多目标跟踪评测", score: 58.4, threshold: 60, status: "未通过", statusBg: "#fee2e2", statusColor: "#dc2626" },
-];
-
-// ── 功能模块 ──
 const MODULES = [
-  { title: "模型仓库", desc: "模型版本管理、对比与发布", href: "/model-repo", icon: HardDrive, color: "#3b82f6", bg: "#eff6ff" },
-  { title: "模型训练", desc: "训练任务管理、超参配置与监控", href: "/model-training", icon: Cpu, color: "#f59e0b", bg: "#fffbeb" },
-  { title: "模型评测", desc: "评测任务配置、指标与报告", href: "/model-eval", icon: BarChart3, color: "#10b981", bg: "#ecfdf5" },
-  { title: "模型测试", desc: "A/B测试、回归测试与验证", href: "/model-testing", icon: FlaskConical, color: "#8b5cf6", bg: "#f5f3ff" },
+  { title: "模型仓库", desc: "训练与微调产物的版本管理、对比与发布", href: "/model-repo", icon: HardDrive, tone: C.info },
+  { title: "模型训练评估", desc: "基于数据集的训练与效果评估，多组对照实验", href: "/model-training", icon: Brain, tone: C.primary },
+  { title: "模型微调评估", desc: "大模型微调场景专项评估，验证数据配方", href: "/model-finetune", icon: Sparkles, tone: C.purple },
+  { title: "模型推理评估", desc: "推理性能与鲁棒性边界测试", href: "/model-inference", icon: Rocket, tone: C.teal },
 ];
 
-function MetricCard({ label, value, suffix, trend, icon: Icon, color, bg }: {
-  label: string; value: number; suffix: string; trend: string;
-  icon: React.ComponentType<any>; color: string; bg: string;
-}) {
+const LOOP = [
+  { title: "数据集", desc: "来自数据发布中心", icon: Database, href: "/data-publish" },
+  { title: "模型试验", desc: "训练 / 微调 / 推理评估", icon: FlaskConical, href: "/model-training" },
+  { title: "评估结论", desc: "指标 + 报告 + 优化建议", icon: FileCheck2, href: "/model-training" },
+  { title: "反哺数据生产", desc: "标注质量 / 数据分布 / 配比", icon: TrendingUp, href: "/quality" },
+];
+
+export default function DataPilotCenterPage() {
+  const trainDone = TRAIN_EXPS.filter((e) => e.status === "已完成" && e.metrics.length > 0);
+  const ftDone = FINETUNE_EXPS.filter((e) => e.status === "已完成");
+  const inferDone = INFER_EXPS.filter((e) => e.status === "已完成");
+  const total = TRAIN_EXPS.length + FINETUNE_EXPS.length + INFER_EXPS.length;
+  const running =
+    TRAIN_EXPS.filter((e) => e.status === "运行中").length +
+    FINETUNE_EXPS.filter((e) => e.status === "运行中").length +
+    INFER_EXPS.filter((e) => e.status === "运行中").length;
+
   return (
-    <div style={{
-      background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0",
-      padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-      transition: "box-shadow 0.2s, transform 0.2s",
-    }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon size={20} style={{ color }} />
-        </div>
-        <span style={{ fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
-          <TrendingUp size={12} style={{ color: "#10b981" }} />{trend}
-        </span>
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
-        {typeof value === 'number' && value >= 1000 ? value.toLocaleString() : value}<span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8", marginLeft: 2 }}>{suffix}</span>
-      </div>
-      <div style={{ fontSize: 12, color: "#64748b" }}>{label}</div>
-    </div>
-  );
-}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.bg }}>
+      <ExpHeader
+        icon={<Cpu size={17} color="#fff" />}
+        title="数据中试中心"
+        subtitle="数据中试中心 ｜ 以数据集为输入，训练 / 微调 / 推理三阶段验证数据质量与适用性"
+      />
 
-export default function ModelProductionPage() {
-  return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", background: "#f8fafc" }}>
-      {/* 统计卡片 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
-        {METRIC_CARDS.map(card => (
-          <MetricCard key={card.label} {...card} />
-        ))}
-      </div>
+      <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
+        <Grid cols={4} style={{ marginBottom: 12 }}>
+          <Metric icon={<FlaskConical size={15} />} label="中试试验" value={total} unit="个" hint={`运行中 ${running} · 覆盖三类评估`} />
+          <Metric icon={<Target size={15} />} label="训练试验平均主指标" value={`${avg(trainDone.map((e) => e.mainValue)).toFixed(1)}%`} tone={C.teal} hint={`${trainDone.length} 个已完成训练试验`} />
+          <Metric icon={<Sparkles size={15} />} label="微调下游平均提升" value={`+${avg(ftDone.map((e) => finetuneGain(e))).toFixed(1)}pt`} tone={C.purple} hint="不含通用能力项" />
+          <Metric icon={<Activity size={15} />} label="推理平均 P95 延迟" value={`${Math.round(avg(inferDone.map((e) => e.perf.p95)))}ms`} tone={C.info} hint={`${inferDone.length} 个已完成推理评估`} />
+        </Grid>
 
-      {/* 近7日趋势 */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div>
-            <h3 style={{ fontWeight: 600, fontSize: 14, color: "#1e293b", margin: 0 }}>近7日训练/评测趋势</h3>
-            <p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0 0" }}>训练任务数 / 评测任务数</p>
-          </div>
-          <button style={{ padding: 8, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#94a3b8" }}>
-            <RefreshCw size={16} />
-          </button>
-        </div>
-        <ReactECharts option={lineChartOption} style={{ height: 260 }} />
-      </div>
+        <Grid cols="1.45fr 1fr" style={{ marginBottom: 12 }}>
+          <Panel title="近 7 日试验趋势" desc="训练评估 / 微调评估 / 推理评估任务数">
+            <ReactECharts option={trendOption} style={{ height: 244 }} />
+          </Panel>
 
-      {/* 训练任务 + 评测任务 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-        {/* 训练任务进度 */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#f59e0b15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Cpu size={16} style={{ color: "#f59e0b" }} />
-              </div>
-              <h3 style={{ fontWeight: 600, fontSize: 14, color: "#1e293b", margin: 0 }}>训练任务进度</h3>
+          <Panel title="数据与模型协同优化闭环" desc="评估结果反哺数据生产，形成闭环" extra={<Tag tone={C.primary}>闭环</Tag>}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {LOOP.map((l, i) => {
+                const Icon = l.icon;
+                return (
+                  <Link
+                    key={l.title}
+                    href={l.href}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "9px 11px",
+                      border: `1px solid ${C.border}`, borderRadius: 6, textDecoration: "none",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 24, height: 24, borderRadius: 6, background: `${C.primary}12`,
+                        color: C.primary, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}
+                    >
+                      <Icon size={13} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 500, color: C.text }}>{l.title}</div>
+                      <div style={{ fontSize: 11, color: C.faint }}>{l.desc}</div>
+                    </div>
+                    <span style={{ fontSize: 11, color: C.faint }}>{i + 1}</span>
+                    <ArrowRight size={12} style={{ color: C.faint }} />
+                  </Link>
+                );
+              })}
             </div>
-            <Link href="/model-training" style={{ fontSize: 11, color: "#d97706", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-              查看全部 <ChevronRight size={12} />
-            </Link>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {TRAINING_TASKS.map((task) => {
-              const pct = task.total > 0 ? Math.round((task.done / task.total) * 100) : 0;
+          </Panel>
+        </Grid>
+
+        <Grid cols={3} style={{ marginBottom: 12 }}>
+          <Panel
+            title="训练评估进展"
+            desc="数据集驱动的模型训练与指标计算"
+            extra={<Link href="/model-training" style={{ fontSize: 11.5, color: C.primary, textDecoration: "none" }}>进入 →</Link>}
+          >
+            {TRAIN_EXPS.slice(0, 3).map((e) => (
+              <div key={e.id} style={{ padding: "8px 0", borderBottom: `1px solid ${C.borderSoft}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, color: C.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</span>
+                  <Tag tone={e.status === "已完成" ? C.success : e.status === "运行中" ? C.info : C.faint}>{e.status}</Tag>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1 }}><Bar pct={e.status === "已完成" ? e.mainValue : e.progress} tone={e.status === "已完成" ? C.primary : C.info} h={4} /></div>
+                  <span style={{ fontSize: 11, color: C.sub, width: 52, textAlign: "right" }}>
+                    {e.status === "已完成" ? `${e.mainValue.toFixed(1)}%` : `${e.progress}%`}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </Panel>
+
+          <Panel
+            title="微调评估进展"
+            desc="数据配方与微调策略对比"
+            extra={<Link href="/model-finetune" style={{ fontSize: 11.5, color: C.primary, textDecoration: "none" }}>进入 →</Link>}
+          >
+            {FINETUNE_EXPS.slice(0, 3).map((e) => {
+              const g = finetuneGain(e);
               return (
-                <div key={task.name} style={{ padding: "12px 14px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{task.name}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", background: task.statusBg, color: task.statusColor, borderRadius: 20 }}>{task.status}</span>
+                <div key={e.id} style={{ padding: "8px 0", borderBottom: `1px solid ${C.borderSoft}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                    <span style={{ fontSize: 12, color: C.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</span>
+                    <Tag tone={e.status === "已完成" ? C.success : C.info}>{e.status}</Tag>
                   </div>
-                  <div style={{ height: 6, background: "#f1f5f9", borderRadius: 3, overflow: "hidden", marginBottom: 6 }}>
-                    <div style={{ height: "100%", borderRadius: 3, background: "#f59e0b", width: `${pct}%`, transition: "width 0.8s ease" }} />
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94a3b8" }}>
-                    <span>Epoch {task.done}/{task.total}</span>
-                    <span style={{ fontWeight: 600, color: "#f59e0b" }}>{pct}%</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ flex: 1 }}><Bar pct={e.status === "已完成" ? Math.min(g * 4, 100) : e.progress} tone={C.purple} h={4} /></div>
+                    <span style={{ fontSize: 11, color: C.sub, width: 52, textAlign: "right" }}>
+                      {e.status === "已完成" ? `+${g.toFixed(1)}pt` : `${e.progress}%`}
+                    </span>
                   </div>
                 </div>
               );
             })}
-          </div>
-        </div>
+          </Panel>
 
-        {/* 评测任务结果 */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#10b98115", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BarChart3 size={16} style={{ color: "#10b981" }} />
-              </div>
-              <h3 style={{ fontWeight: 600, fontSize: 14, color: "#1e293b", margin: 0 }}>评测任务结果</h3>
-            </div>
-            <Link href="/model-eval" style={{ fontSize: 11, color: "#059669", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-              查看全部 <ChevronRight size={12} />
-            </Link>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {EVAL_TASKS.map((task) => (
-              <div key={task.name} style={{ padding: "12px 14px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{task.name}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", background: task.statusBg, color: task.statusColor, borderRadius: 20 }}>{task.status}</span>
+          <Panel
+            title="推理评估进展"
+            desc="推理性能与鲁棒性边界"
+            extra={<Link href="/model-inference" style={{ fontSize: 11.5, color: C.primary, textDecoration: "none" }}>进入 →</Link>}
+          >
+            {INFER_EXPS.slice(0, 3).map((e) => (
+              <div key={e.id} style={{ padding: "8px 0", borderBottom: `1px solid ${C.borderSoft}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, color: C.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.model}</span>
+                  <Tag tone={e.status === "已完成" ? C.success : C.info}>{e.status}</Tag>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 6, background: "#f1f5f9", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 3, background: task.score >= task.threshold ? "#10b981" : "#ef4444", width: `${task.score}%`, transition: "width 0.8s ease" }} />
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: task.score >= task.threshold ? "#10b981" : "#ef4444" }}>{task.score}</span>
-                    <span style={{ fontSize: 10, color: "#94a3b8" }}>阈值 {task.threshold}</span>
-                  </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: C.sub }}>
+                  <span>P95 {e.perf.p95}ms</span>
+                  <span style={{ color: C.border }}>|</span>
+                  <span>{e.perf.qps.toFixed(0)} QPS</span>
+                  <div style={{ flex: 1 }} />
+                  <span>{e.status === "已完成" ? `${e.perf.accuracy.toFixed(1)}%` : `${e.progress}%`}</span>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
+          </Panel>
+        </Grid>
 
-      {/* 功能模块入口 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-        {MODULES.map((m) => {
-          const MIcon = m.icon;
-          return (
-            <Link key={m.href} href={m.href} style={{
-              background: "#fff", borderRadius: 12, padding: 20,
-              textDecoration: "none", color: "inherit", border: "1px solid #e2e8f0",
-              transition: "all 0.2s", display: "block",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-2px)";
-                (e.currentTarget as HTMLAnchorElement).style.boxShadow = `0 8px 24px ${m.color}25`;
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = m.color;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)";
-                (e.currentTarget as HTMLAnchorElement).style.borderColor = "#e2e8f0";
-              }}
-            >
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: m.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-                <MIcon size={20} style={{ color: m.color }} />
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b", marginBottom: 6 }}>{m.title}</div>
-              <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{m.desc}</div>
-              <div style={{ marginTop: 10, fontSize: 11, color: m.color, fontWeight: 600 }}>前往 →</div>
-            </Link>
-          );
-        })}
+        <Panel title="中试能力入口" desc="模型仓库 + 模型试验三类评估">
+          <Grid cols={4}>
+            {MODULES.map((m) => {
+              const Icon = m.icon;
+              return (
+                <Link
+                  key={m.href}
+                  href={m.href}
+                  style={{
+                    display: "block", padding: "14px 16px", border: `1px solid ${C.border}`,
+                    borderRadius: 8, textDecoration: "none", color: "inherit", background: "#fff",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 30, height: 30, borderRadius: 8, background: `${m.tone}12`, color: m.tone,
+                      display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10,
+                    }}
+                  >
+                    <Icon size={15} />
+                  </span>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>{m.title}</div>
+                  <div style={{ fontSize: 11.5, color: C.sub, lineHeight: 1.6, minHeight: 34 }}>{m.desc}</div>
+                  <div style={{ fontSize: 11.5, color: m.tone, fontWeight: 600, marginTop: 4 }}>前往 →</div>
+                </Link>
+              );
+            })}
+          </Grid>
+        </Panel>
       </div>
     </div>
   );

@@ -345,20 +345,32 @@ export function LineChart({
   height?: number;
   yUnit?: string;
 }) {
-  const w = 1000;
-  const padL = 44;
-  const padR = 16;
+  const w = 420;
+  const padL = 40;
+  const padR = 12;
   const padT = 16;
   const padB = 28;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
   const all = series.flatMap((s) => s.data);
   const max = Math.max(...all, 1);
-  const niceMax = Math.ceil(max / 10) * 10 || 10;
+  // 按量级取“整数上限”，避免小数值（如 loss 2.4）被拉到 0~10 的粗刻度里
+  const niceCeil = (v: number) => {
+    if (v <= 0) return 1;
+    const base = Math.pow(10, Math.floor(Math.log10(v)));
+    const f = v / base;
+    const step = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    return step * base;
+  };
+  const niceMax = niceCeil(max);
   const n = labels.length;
   const xAt = (i: number) => padL + (n > 1 ? (i / (n - 1)) * innerW : innerW / 2);
   const yAt = (v: number) => padT + innerH - (v / niceMax) * innerH;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(niceMax * f));
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => +(niceMax * f).toFixed(2));
+  const tickText = (v: number) => (niceMax < 10 ? (Number.isInteger(v) ? String(v) : v.toFixed(1)) : String(Math.round(v)));
+  // 横轴标签按 ~72px 一个抽稀，避免文字互相压住
+  const labelStep = Math.max(1, Math.ceil(n / Math.floor(innerW / 72)));
+  const showDots = n <= 12;
 
   return (
     <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{ display: "block" }}>
@@ -370,24 +382,27 @@ export function LineChart({
           </text>
         </g>
       ))}
-      {labels.map((lb, i) => (
-        <text key={lb + i} x={xAt(i)} y={height - 8} textAnchor="middle" fontSize="11" fill={C.faint}>
-          {lb}
-        </text>
-      ))}
+      {labels.map((lb, i) =>
+        i % labelStep === 0 || i === n - 1 ? (
+          <text key={lb + i} x={xAt(i)} y={height - 8} textAnchor="middle" fontSize="11" fill={C.faint}>
+            {lb}
+          </text>
+        ) : null
+      )}
       {series.map((s) => {
         const line = s.data.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
         return (
           <g key={s.name}>
             <polyline points={line} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-            {s.data.map((v, i) => (
-              <circle key={i} cx={xAt(i)} cy={yAt(v)} r="3" fill="#fff" stroke={s.color} strokeWidth="2" />
-            ))}
+            {showDots &&
+              s.data.map((v, i) => (
+                <circle key={i} cx={xAt(i)} cy={yAt(v)} r="3" fill="#fff" stroke={s.color} strokeWidth="2" />
+              ))}
           </g>
         );
       })}
       {yUnit && (
-        <text x={8} y={padT + 4} fontSize="11" fill={C.faint}>
+        <text x={4} y={padT - 5} fontSize="11" fill={C.faint}>
           {yUnit}
         </text>
       )}

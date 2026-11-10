@@ -154,6 +154,14 @@ export interface QcRule {
   owner: string;
   updatedAt: string;
   fromTemplate?: string;
+  /** 规则标签：规则与检测任务之间的公共口径 */
+  tags?: QcRuleTagKey[];
+  /** 来自规则库的哪一类（回填参数配置用） */
+  ruleKind?: string;
+  /** 规则参数（按 ruleKind 的规格保存） */
+  params?: Record<string, string>;
+  /** 中文描述 / 原始说明 */
+  desc?: string;
 }
 
 export const QC_RULE_TYPE_LABEL: Record<QcRuleType, string> = {
@@ -169,9 +177,349 @@ export const QC_LEVEL_META: Record<QcLevel, { label: string; tone: string; soft:
   minor: { label: "提示", tone: "#0ea5e9", soft: "#f0f9ff" },
 };
 
+// ---------------------------------------------------------- 规则标签
+// 规则标签是「规则 ↔ 检测任务 ↔ 报告/工单」之间的公共口径：
+// 规则打标签 → 检测任务按标签组合 → 报告/工单按标签追溯命中来源
+export type QcRuleTagKey =
+  | "dist"
+  | "noise"
+  | "semantic"
+  | "imageq"
+  | "null"
+  | "dup"
+  | "range"
+  | "fmt"
+  | "sla";
+
+export interface QcRuleTagMeta {
+  key: QcRuleTagKey;
+  label: string;
+  short: string;
+  code: string;
+  tone: string;
+  soft: string;
+  desc: string;
+}
+
+export const QC_RULE_TAGS: QcRuleTagMeta[] = [
+  { key: "dist", label: "统计分布异常", short: "分布异常", code: "TAG-DIST", tone: "#4f46e5", soft: "#f5f3ff", desc: "Z-score / IQR / 分位数等统计口径" },
+  { key: "noise", label: "深度学习噪声", short: "噪声识别", code: "TAG-NOISE", tone: "#0ea5e9", soft: "#f0f9ff", desc: "模型打分识别错标、漏标与混淆样本" },
+  { key: "semantic", label: "语义一致性", short: "语义一致", code: "TAG-SEM", tone: "#8b5cf6", soft: "#faf5ff", desc: "跨源匹配、语义蕴含、双人标注一致" },
+  { key: "imageq", label: "图像质量", short: "图像质量", code: "TAG-IMG", tone: "#f59e0b", soft: "#fffbeb", desc: "模糊、过曝、欠曝、压缩伪影等成像缺陷" },
+  { key: "null", label: "空值缺失", short: "空值", code: "TAG-NULL", tone: "#dc2626", soft: "#fef2f2", desc: "必填字段、标注框、关键帧缺失" },
+  { key: "dup", label: "重复冗余", short: "重复", code: "TAG-DUP", tone: "#14b8a6", soft: "#f0fdfa", desc: "主键重复与感知哈希近重复样本" },
+  { key: "range", label: "值域越界", short: "值域", code: "TAG-RANGE", tone: "#16a34a", soft: "#f0fdf4", desc: "枚举白名单与数值区间越界" },
+  { key: "fmt", label: "格式规范", short: "格式", code: "TAG-FMT", tone: "#64748b", soft: "#f8fafc", desc: "正则格式、字典与元数据规范符合度" },
+  { key: "sla", label: "时效延迟", short: "时效", code: "TAG-SLA", tone: "#0891b2", soft: "#ecfeff", desc: "批次产出 SLA 与数据新鲜度" },
+];
+
+export const QC_RULE_TAG_MAP: Record<QcRuleTagKey, QcRuleTagMeta> = QC_RULE_TAGS.reduce(
+  (acc, t) => ({ ...acc, [t.key]: t }),
+  {} as Record<QcRuleTagKey, QcRuleTagMeta>
+);
+
+/** 规则的标签列表（历史数据未打标签时按空处理） */
+export function tagsOfRule(r: QcRule): QcRuleTagMeta[] {
+  const keys = r.tags || [];
+  return keys.map((k) => QC_RULE_TAG_MAP[k]).filter(Boolean);
+}
+
+// ---------------------------------------------------------- 规则库（规则选择 + 参数配置）
+// 新建规则不再手写表达式：先选规则类型（规则库），再按类型填参数，表达式由参数生成
+export interface QcRuleParamSpec {
+  k: string;
+  label: string;
+  def: string;
+  ph?: string;
+  hint?: string;
+  /** list=关键词/字典列表，path=参考路径，regex=匹配模式（等宽显示） */
+  kind?: "num" | "text" | "regex" | "list" | "path";
+  wide?: boolean;
+}
+
+export interface QcRuleKind {
+  key: string;
+  name: string;
+  cat: "基础校验" | "统计校验" | "一致性校验" | "时效校验" | "自定义";
+  desc: string;
+  type: QcRuleType;
+  dims: QcDim[];
+  tags: QcRuleTagKey[];
+  op: string;
+  /** 最少字段数 */
+  minFields: number;
+  fieldsHint: string;
+  params: QcRuleParamSpec[];
+  build: (fields: string[], p: Record<string, string>) => string;
+}
+
+const FX = (fields: string[]) => (fields.length ? fields.join(", ") : "<字段>");
+
+export const QC_RULE_KINDS: QcRuleKind[] = [
+  {
+    key: "notnull",
+    name: "非空校验",
+    cat: "基础校验",
+    desc: "关键字段缺失率不得高于阈值，命中即判为缺失问题",
+    type: "expression",
+    dims: ["completeness", "validity"],
+    tags: ["null"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "必填字段",
+    params: [{ k: "limit", label: "空值率上限", def: "0.001", ph: "0.001", kind: "num", hint: "0.001 = 0.1%" }],
+    build: (f, p) => `null_ratio(${FX(f)}) <= ${p.limit || "0"}`,
+  },
+  {
+    key: "range",
+    name: "数值范围校验",
+    cat: "基础校验",
+    desc: "数值型字段必须落在业务合理区间内，越界样本计为问题",
+    type: "expression",
+    dims: ["accuracy"],
+    tags: ["range"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "数值字段",
+    params: [
+      { k: "min", label: "取值下限", def: "0", ph: "0", kind: "num" },
+      { k: "max", label: "取值上限", def: "60", ph: "60", kind: "num" },
+    ],
+    build: (f, p) => `range_violation(${FX(f)}, ${p.min || "0"}, ${p.max || "0"}) <= 0`,
+  },
+  {
+    key: "regex",
+    name: "正则格式校验",
+    cat: "基础校验",
+    desc: "按匹配模式校验字段格式，不匹配的样本计为规范性问题",
+    type: "expression",
+    dims: ["validity"],
+    tags: ["fmt"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "待校验字段",
+    params: [
+      {
+        k: "pattern",
+        label: "匹配模式（pattern）",
+        def: "^[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+$",
+        ph: "^[0-9.]+,[0-9.]+$",
+        kind: "regex",
+        wide: true,
+      },
+    ],
+    build: (f, p) => `count_not_match(${FX(f)}, '${p.pattern || ".*"}') <= 0`,
+  },
+  {
+    key: "enum",
+    name: "枚举白名单",
+    cat: "基础校验",
+    desc: "取值必须属于给定字典，字典外取值计为越界问题",
+    type: "enum",
+    dims: ["validity", "accuracy"],
+    tags: ["range", "fmt"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "枚举字段",
+    params: [
+      { k: "dict", label: "关键词列表（key_list）", def: "EVENT_DICT_12", ph: "EVENT_DICT_12 或 逗号分隔取值", kind: "list", wide: true },
+    ],
+    build: (f, p) => `count_not_in(${FX(f)}, ${p.dict || "DICT"}) <= 0`,
+  },
+  {
+    key: "unique",
+    name: "主键唯一校验",
+    cat: "基础校验",
+    desc: "按所选字段组合判重，重复行数必须为 0",
+    type: "expression",
+    dims: ["uniqueness"],
+    tags: ["dup"],
+    op: "<=",
+    minFields: 2,
+    fieldsHint: "主键字段（≥2 个）",
+    params: [],
+    build: (f) => `count_dup(${FX(f)}) <= 0`,
+  },
+  {
+    key: "dist",
+    name: "分布异常检测",
+    cat: "统计校验",
+    desc: "对数值字段做正态拟合，偏离 N 倍标准差计为分布异常",
+    type: "expression",
+    dims: ["accuracy", "completeness"],
+    tags: ["dist"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "数值字段",
+    params: [{ k: "sigma", label: "标准差倍数", def: "3", ph: "3", kind: "num" }],
+    build: (f, p) => `abs(zscore(${FX(f)})) <= ${p.sigma || "3"}`,
+  },
+  {
+    key: "ratio",
+    name: "占比校验",
+    cat: "统计校验",
+    desc: "某分组取值占比需达到下限，用于训练集划分、类别平衡等场景",
+    type: "expression",
+    dims: ["validity", "consistency"],
+    tags: ["dist"],
+    op: ">=",
+    minFields: 1,
+    fieldsHint: "分组字段",
+    params: [
+      { k: "bucket", label: "分组取值", def: "train", ph: "train", kind: "text" },
+      { k: "ratio", label: "占比下限", def: "0.7", ph: "0.7", kind: "num" },
+    ],
+    build: (f, p) => `split_ratio(${FX(f)}, '${p.bucket || "train"}') >= ${p.ratio || "0"}`,
+  },
+  {
+    key: "coverage",
+    name: "覆盖率校验",
+    cat: "统计校验",
+    desc: "已标注 / 已产出样本占比需达到下限",
+    type: "expression",
+    dims: ["completeness"],
+    tags: ["null", "dist"],
+    op: ">=",
+    minFields: 1,
+    fieldsHint: "状态字段",
+    params: [{ k: "ratio", label: "覆盖率下限", def: "0.95", ph: "0.95", kind: "num" }],
+    build: (f, p) => `labeled_coverage(${FX(f)}) >= ${p.ratio || "0"}`,
+  },
+  {
+    key: "refer",
+    name: "参照完整性",
+    cat: "一致性校验",
+    desc: "与参考表（参考路径）按主键匹配，匹配率需达到下限",
+    type: "expression",
+    dims: ["consistency"],
+    tags: ["semantic"],
+    op: ">=",
+    minFields: 1,
+    fieldsHint: "关联主键字段",
+    params: [
+      { k: "ref", label: "参考路径（refer_path）", def: "refs/video_index.parquet", ph: "refs/xxx.parquet", kind: "path", wide: true },
+      { k: "rate", label: "匹配率下限", def: "0.995", ph: "0.995", kind: "num" },
+    ],
+    build: (f, p) => `match_rate(${FX(f)}, '${p.ref || "refs/ref.parquet"}') >= ${p.rate || "0"}`,
+  },
+  {
+    key: "agree",
+    name: "双人标注一致性",
+    cat: "一致性校验",
+    desc: "两名标注员的同题结果 IoU 不得低于下限",
+    type: "threshold",
+    dims: ["consistency"],
+    tags: ["semantic"],
+    op: ">=",
+    minFields: 1,
+    fieldsHint: "标注结果字段",
+    params: [{ k: "iou", label: "IoU 下限", def: "0.85", ph: "0.85", kind: "num" }],
+    build: (f, p) => `min_pair_iou(${FX(f)}) >= ${p.iou || "0"}`,
+  },
+  {
+    key: "align",
+    name: "时序对齐校验",
+    cat: "一致性校验",
+    desc: "两字段时间偏差不得超允许误差（毫秒）",
+    type: "expression",
+    dims: ["consistency"],
+    tags: ["semantic", "sla"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "时间字段",
+    params: [{ k: "ms", label: "允许偏差（ms）", def: "40", ph: "40", kind: "num" }],
+    build: (f, p) => `time_align_diff(${FX(f)}) <= ${p.ms || "0"}`,
+  },
+  {
+    key: "dup",
+    name: "近重复样本检测",
+    cat: "一致性校验",
+    desc: "感知哈希比对已入库样本，汉明距离小于阈值的判为近重复",
+    type: "script",
+    dims: ["uniqueness"],
+    tags: ["dup", "imageq"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "图像 / 向量字段",
+    params: [{ k: "dist", label: "汉明距离上限", def: "5", ph: "5", kind: "num" }],
+    build: (f, p) => `phash_min_distance(${FX(f)}) <= ${p.dist || "5"}`,
+  },
+  {
+    key: "sla",
+    name: "时效校验",
+    cat: "时效校验",
+    desc: "从产出到入库的时长不得超过 SLA（小时）",
+    type: "threshold",
+    dims: ["timeliness"],
+    tags: ["sla"],
+    op: "<=",
+    minFields: 1,
+    fieldsHint: "时间字段",
+    params: [{ k: "hours", label: "时限（小时）", def: "24", ph: "24", kind: "num" }],
+    build: (f, p) => `hours_since(${FX(f)}) <= ${p.hours || "0"}`,
+  },
+  {
+    key: "custom",
+    name: "自定义表达式",
+    cat: "自定义",
+    desc: "规则库未覆盖时手写表达式，支持 AND / OR 组合内置函数",
+    type: "expression",
+    dims: ["completeness", "accuracy", "consistency", "uniqueness", "timeliness", "validity"],
+    tags: [],
+    op: "<=",
+    minFields: 0,
+    fieldsHint: "可选",
+    params: [{ k: "expr", label: "校验表达式", def: "", ph: "null_ratio(event_type, start_time) <= 0.001", kind: "regex", wide: true }],
+    build: (_f, p) => p.expr || "",
+  },
+];
+
+export const QC_RULE_KIND_MAP: Record<string, QcRuleKind> = QC_RULE_KINDS.reduce(
+  (acc, k) => ({ ...acc, [k.key]: k }),
+  {} as Record<string, QcRuleKind>
+);
+
+/** 规则类别的默认参数 */
+export function defaultParams(kindKey: string): Record<string, string> {
+  const k = QC_RULE_KIND_MAP[kindKey];
+  if (!k) return {};
+  return k.params.reduce((acc, p) => ({ ...acc, [p.k]: p.def }), {} as Record<string, string>);
+}
+
+/** 从表达式里取比较符右侧作为阈值展示（保证列表阈值与表达式永远自洽） */
+export function splitThreshold(expr: string, op: string): string {
+  const i = expr.lastIndexOf(` ${op} `);
+  return i >= 0 ? expr.slice(i + op.length + 2).trim() : "—";
+}
+
+/** 按表达式反查规则库类别（历史规则回填用） */
+export function detectKindKey(expr: string): string {
+  const s = (expr || "").trim();
+  const map: [RegExp, string][] = [
+    [/^null_ratio|is null/i, "notnull"],
+    [/range_violation|range_between/i, "range"],
+    [/count_not_match|regex_match/i, "regex"],
+    [/count_not_in|enum_in| in DICT/i, "enum"],
+    [/count_dup/i, "unique"],
+    [/zscore/i, "dist"],
+    [/split_ratio/i, "ratio"],
+    [/labeled_coverage|coverage\(/i, "coverage"],
+    [/match_rate/i, "refer"],
+    [/pair_iou|iou\(/i, "agree"],
+    [/time_align|abs\(timestamp/i, "align"],
+    [/phash/i, "dup"],
+    [/hours_since|interval '/i, "sla"],
+  ];
+  for (const [re, key] of map) if (re.test(s)) return key;
+  return "custom";
+}
+
 export const QC_RULES: QcRule[] = [
   {
     id: "QCR-0001",
+    tags: ["null", "dist"],
+    ruleKind: "notnull",
+    params: { limit: "0.001" },
     name: "必填字段完整率",
     dim: "completeness",
     dataset: "交通事件识别数据集",
@@ -190,6 +538,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0002",
+    tags: ["null"],
+    ruleKind: "notnull",
+    params: { limit: "0.005" },
     name: "标注框捕获率",
     dim: "completeness",
     dataset: "交通目标检测数据集",
@@ -207,6 +558,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0003",
+    tags: ["null", "dist"],
+    ruleKind: "coverage",
+    params: { ratio: "0.98" },
     name: "关键帧覆盖率",
     dim: "completeness",
     dataset: "多目标跟踪数据集",
@@ -224,6 +578,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0004",
+    tags: ["range"],
+    ruleKind: "enum",
+    params: { dict: "EVENT_DICT_12" },
     name: "事件类型值域校验",
     dim: "accuracy",
     dataset: "交通事件识别数据集",
@@ -242,6 +599,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0005",
+    tags: ["range"],
+    ruleKind: "range",
+    params: { min: "0", max: "4096" },
     name: "标注框坐标值域",
     dim: "accuracy",
     dataset: "交通目标检测数据集",
@@ -260,6 +620,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0006",
+    tags: ["range"],
+    ruleKind: "range",
+    params: { min: "0.2", max: "60" },
     name: "行为时长合理性",
     dim: "accuracy",
     dataset: "交通行为识别数据集",
@@ -277,6 +640,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0007",
+    tags: ["semantic"],
+    ruleKind: "refer",
+    params: { ref: "refs/video_index.parquet", rate: "0.995" },
     name: "跨源主键对账",
     dim: "consistency",
     dataset: "交通事件识别数据集",
@@ -294,6 +660,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0008",
+    tags: ["semantic"],
+    ruleKind: "agree",
+    params: { iou: "0.85" },
     name: "双人标注一致性 IoU",
     dim: "consistency",
     dataset: "交通事件识别数据集",
@@ -312,6 +681,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0009",
+    tags: ["semantic", "sla"],
+    ruleKind: "align",
+    params: { ms: "40" },
     name: "标注与元数据时序一致",
     dim: "consistency",
     dataset: "多目标跟踪数据集",
@@ -329,6 +701,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0010",
+    tags: ["dup"],
+    ruleKind: "unique",
+    params: {},
     name: "主键唯一性",
     dim: "uniqueness",
     dataset: "交通事件识别数据集",
@@ -347,6 +722,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0011",
+    tags: ["dup", "imageq"],
+    ruleKind: "dup",
+    params: { dist: "5" },
     name: "图像近重复检测",
     dim: "uniqueness",
     dataset: "交通目标检测数据集",
@@ -364,6 +742,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0012",
+    tags: ["sla"],
+    ruleKind: "sla",
+    params: { hours: "4" },
     name: "批次产出 SLA",
     dim: "timeliness",
     dataset: "交通事件识别数据集",
@@ -382,6 +763,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0013",
+    tags: ["sla"],
+    ruleKind: "sla",
+    params: { hours: "24" },
     name: "数据新鲜度",
     dim: "timeliness",
     dataset: "多目标跟踪数据集",
@@ -399,6 +783,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0014",
+    tags: ["range", "fmt"],
+    ruleKind: "enum",
+    params: { dict: "DICT_CLASS_12" },
     name: "类别字典白名单",
     dim: "validity",
     dataset: "交通目标检测数据集",
@@ -417,6 +804,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0015",
+    tags: ["fmt"],
+    ruleKind: "regex",
+    params: { pattern: "^[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+$" },
     name: "坐标格式规范",
     dim: "validity",
     dataset: "交通目标检测数据集",
@@ -434,6 +824,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0016",
+    tags: ["null", "fmt"],
+    ruleKind: "notnull",
+    params: { limit: "0" },
     name: "相机参数完整性",
     dim: "validity",
     dataset: "多目标跟踪数据集",
@@ -451,6 +844,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0017",
+    tags: ["dist"],
+    ruleKind: "ratio",
+    params: { bucket: "train", ratio: "0.7" },
     name: "训练集划分比例",
     dim: "validity",
     dataset: "交通行为识别数据集",
@@ -468,6 +864,9 @@ export const QC_RULES: QcRule[] = [
   },
   {
     id: "QCR-0018",
+    tags: ["null", "dist"],
+    ruleKind: "coverage",
+    params: { ratio: "0.95" },
     name: "标签覆盖率",
     dim: "completeness",
     dataset: "交通行为识别数据集",
@@ -595,82 +994,338 @@ export const DETECTOR_MAP = QC_DETECTORS.reduce(
   {} as Record<DetectorKey, QcDetector>
 );
 
+// ---------------------------------------------------------- 规则标签
+// 四类检测能力不再各自成模块，而是作为「规则标签」挂在检测任务上，可任意组合
+export type QcTagKey = DetectorKey;
+
+/** 列表/筛选里用的短名，避免窄列折行 */
+export const QC_TAG_SHORT: Record<DetectorKey, string> = {
+  outlier: "分布异常",
+  noise: "噪声识别",
+  semantic: "语义一致",
+  imageq: "图像质量",
+};
+
+/** 规则标签编码，任务详情里展示，便于和规则库对齐 */
+export const QC_TAG_CODE: Record<DetectorKey, string> = {
+  outlier: "TAG-DIST",
+  noise: "TAG-NOISE",
+  semantic: "TAG-SEM",
+  imageq: "TAG-IMG",
+};
+
 // ---------------------------------------------------------- 检测任务
-export interface QcDetectJob {
+export type QcTaskState = "running" | "done" | "failed";
+
+/** pass=结果正常→输出报告；fail=结果异常→转工单；pending=尚未出结论 */
+export type QcTaskVerdict = "pass" | "fail" | "pending";
+
+export interface QcDetectTask {
   id: string;
+  name: string;
   dataset: string;
   batch: string;
-  detectors: DetectorKey[];
+  /** 规则标签：本次任务启用的检测能力 */
+  tags: DetectorKey[];
+  /** 检测样本量 */
   total: number;
+  /** 检出问题数 */
   found: number;
-  status: "running" | "done" | "failed";
+  /** 允许的异常率上限（%），超出即判为异常 */
+  threshold: number;
+  state: QcTaskState;
+  verdict: QcTaskVerdict;
+  /** 结果正常 → 输出的质量报告 */
+  reportId?: string;
+  /** 结果异常 → 转出的问题工单 */
+  ticketIds: string[];
   startedAt: string;
   cost: string;
   operator: string;
 }
 
-export const QC_DETECT_JOBS: QcDetectJob[] = [
+export const QC_DETECT_TASKS: QcDetectTask[] = [
   {
-    id: "QDJ-20261020-01",
+    id: "QDJ-2026-1020-04",
+    name: "交通事件识别 · RUN-2007 全量基线检测",
+    dataset: "交通事件识别数据集",
+    batch: "RUN-2007",
+    tags: ["outlier", "noise", "semantic", "imageq"],
+    total: 12800,
+    found: 0,
+    threshold: 0.5,
+    state: "running",
+    verdict: "pending",
+    ticketIds: [],
+    startedAt: "2026-10-20 17:48",
+    cost: "运行 14 分钟",
+    operator: "李工 · 数据质量",
+  },
+  {
+    id: "QDJ-2026-1020-03",
+    name: "交通事件识别 · RUN-2003 加严复检",
     dataset: "交通事件识别数据集",
     batch: "RUN-2003",
-    detectors: ["outlier", "noise", "imageq"],
+    tags: ["outlier", "noise", "imageq"],
     total: 8542,
     found: 216,
-    status: "running",
+    threshold: 0.5,
+    state: "done",
+    verdict: "fail",
+    ticketIds: ["QCT-2026-0041", "QCT-2026-0039", "QCT-2026-0038"],
     startedAt: "2026-10-20 14:02",
-    cost: "运行 18 分钟",
-    operator: "系统自动",
+    cost: "26 分 40 秒",
+    operator: "李工 · 数据质量",
   },
   {
-    id: "QDJ-20261020-00",
+    id: "QDJ-2026-1020-02",
+    name: "交通目标检测 · RUN-2001 全量检测",
     dataset: "交通目标检测数据集",
     batch: "RUN-2001",
-    detectors: ["outlier", "noise", "imageq", "semantic"],
+    tags: ["outlier", "noise", "semantic", "imageq"],
     total: 12600,
     found: 348,
-    status: "done",
-    startedAt: "2026-10-20 09:30",
-    cost: "26 分 12 秒",
-    operator: "王强",
+    threshold: 0.5,
+    state: "done",
+    verdict: "fail",
+    ticketIds: ["QCT-2026-0040", "QCT-2026-0037", "QCT-2026-0035", "QCT-2026-0034"],
+    startedAt: "2026-10-20 08:12",
+    cost: "31 分 08 秒",
+    operator: "王工 · 标注质检",
   },
   {
-    id: "QDJ-20261019-02",
-    dataset: "多目标跟踪数据集",
-    batch: "RUN-2005",
-    detectors: ["outlier", "noise"],
-    total: 9820,
-    found: 174,
-    status: "done",
-    startedAt: "2026-10-19 20:15",
-    cost: "14 分 05 秒",
-    operator: "李明",
-  },
-  {
-    id: "QDJ-20261019-01",
-    dataset: "交通行为识别数据集",
-    batch: "RUN-2004",
-    detectors: ["outlier", "semantic"],
-    total: 6400,
-    found: 92,
-    status: "done",
-    startedAt: "2026-10-19 10:08",
-    cost: "9 分 44 秒",
-    operator: "王雪梅",
-  },
-  {
-    id: "QDJ-20261018-03",
+    id: "QDJ-2026-1020-01",
+    name: "交通事件识别 · RUN-2002 例行检测",
     dataset: "交通事件识别数据集",
     batch: "RUN-2002",
-    detectors: ["noise", "imageq"],
+    tags: ["outlier", "noise"],
+    total: 7980,
+    found: 34,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1017",
+    ticketIds: [],
+    startedAt: "2026-10-20 07:30",
+    cost: "11 分 52 秒",
+    operator: "系统自动 · 批次守门",
+  },
+  {
+    id: "QDJ-2026-1019-03",
+    name: "交通行为识别 · RUN-2004 例行检测",
+    dataset: "交通行为识别数据集",
+    batch: "RUN-2004",
+    tags: ["outlier", "semantic"],
+    total: 6400,
+    found: 22,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1018",
+    ticketIds: [],
+    startedAt: "2026-10-19 10:02",
+    cost: "9 分 44 秒",
+    operator: "李工 · 数据质量",
+  },
+  {
+    id: "QDJ-2026-1019-02",
+    name: "多目标跟踪 · RUN-2005 全量检测",
+    dataset: "多目标跟踪数据集",
+    batch: "RUN-2005",
+    tags: ["outlier", "noise"],
+    total: 9820,
+    found: 174,
+    threshold: 0.5,
+    state: "done",
+    verdict: "fail",
+    ticketIds: ["QCT-2026-0033", "QCT-2026-0032"],
+    startedAt: "2026-10-19 20:10",
+    cost: "14 分 05 秒",
+    operator: "王工 · 标注质检",
+  },
+  {
+    id: "QDJ-2026-1019-01",
+    name: "交通目标检测 · RUN-2001 抽样复检",
+    dataset: "交通目标检测数据集",
+    batch: "RUN-2001",
+    tags: ["outlier"],
+    total: 11200,
+    found: 28,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1016",
+    ticketIds: [],
+    startedAt: "2026-10-19 09:15",
+    cost: "8 分 20 秒",
+    operator: "系统自动 · 批次守门",
+  },
+  {
+    id: "QDJ-2026-1018-02",
+    name: "多目标跟踪 · RUN-2005 抽样抽检",
+    dataset: "多目标跟踪数据集",
+    batch: "RUN-2005",
+    tags: ["outlier", "noise", "semantic"],
+    total: 9640,
+    found: 43,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1015",
+    ticketIds: [],
+    startedAt: "2026-10-18 16:20",
+    cost: "12 分 36 秒",
+    operator: "李工 · 数据质量",
+  },
+  {
+    id: "QDJ-2026-1018-01",
+    name: "交通事件识别 · RUN-2003 夜间复检",
+    dataset: "交通事件识别数据集",
+    batch: "RUN-2003",
+    tags: ["noise", "imageq"],
     total: 7980,
     found: 0,
-    status: "failed",
+    threshold: 0.5,
+    state: "failed",
+    verdict: "pending",
+    ticketIds: [],
     startedAt: "2026-10-18 22:40",
     cost: "中断于 2 分 31 秒",
-    operator: "系统自动",
+    operator: "系统自动 · 批次守门",
+  },
+  {
+    id: "QDJ-2026-1017-01",
+    name: "交通行为识别 · RUN-2004 图像质量专项",
+    dataset: "交通行为识别数据集",
+    batch: "RUN-2004",
+    tags: ["imageq", "noise"],
+    total: 5840,
+    found: 18,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1014",
+    ticketIds: [],
+    startedAt: "2026-10-17 14:05",
+    cost: "7 分 18 秒",
+    operator: "王工 · 标注质检",
+  },
+  {
+    id: "QDJ-2026-1016-01",
+    name: "交通目标检测 · RUN-2001 语义抽检",
+    dataset: "交通目标检测数据集",
+    batch: "RUN-2001",
+    tags: ["semantic"],
+    total: 12600,
+    found: 52,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1020",
+    ticketIds: [],
+    startedAt: "2026-10-16 11:40",
+    cost: "16 分 02 秒",
+    operator: "李工 · 数据质量",
+  },
+  {
+    id: "QDJ-2026-1015-01",
+    name: "多目标跟踪 · RUN-2005 分布专项",
+    dataset: "多目标跟踪数据集",
+    batch: "RUN-2005",
+    tags: ["outlier"],
+    total: 9200,
+    found: 41,
+    threshold: 0.5,
+    state: "done",
+    verdict: "pass",
+    reportId: "QR-2026-1011",
+    ticketIds: [],
+    startedAt: "2026-10-15 10:10",
+    cost: "6 分 45 秒",
+    operator: "系统自动 · 批次守门",
   },
 ];
+
+/** 异常率（%），保留两位 */
+export function failRateOf(t: QcDetectTask): number {
+  if (!t.total) return 0;
+  return Math.round((t.found / t.total) * 10000) / 100;
+}
+
+/** 结论由「异常率 vs 阈值」推导，保证列表文案与数字始终自洽 */
+export function verdictOf(t: QcDetectTask): QcTaskVerdict {
+  if (t.state !== "done") return "pending";
+  return failRateOf(t) > t.threshold ? "fail" : "pass";
+}
+
+export const QC_VERDICT_META: Record<QcTaskVerdict, { label: string; tone: string; soft: string }> = {
+  pass: { label: "结果正常", tone: "#16a34a", soft: "#f0fdf4" },
+  fail: { label: "结果异常", tone: "#dc2626", soft: "#fef2f2" },
+  pending: { label: "待出结论", tone: "#64748b", soft: "#f8fafc" },
+};
+
+export const QC_TASK_STATE_META: Record<QcTaskState, { label: string; tone: string; soft: string }> = {
+  running: { label: "检测中", tone: "#2563eb", soft: "#eff6ff" },
+  done: { label: "已完成", tone: "#16a34a", soft: "#f0fdf4" },
+  failed: { label: "已中断", tone: "#64748b", soft: "#f1f5f9" },
+};
+
+/** 把某任务的检出量按规则标签拆分（最大余数法，结果确定、合计等于 found） */
+export function tagHitsOf(t: QcDetectTask): { key: DetectorKey; name: string; short: string; code: string; hits: number; tone: string; f1: number }[] {
+  if (!t.tags.length) return [];
+  const weights = t.tags.map((k) => 1 + (h32(`${t.id}|${k}`) % 9));
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const raw = weights.map((w) => (t.found * w) / sum);
+  const alloc = raw.map((v) => Math.floor(v));
+  let rest = t.found - alloc.reduce((a, b) => a + b, 0);
+  const order = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i);
+  let p = 0;
+  while (rest > 0 && order.length) {
+    alloc[order[p % order.length].i] += 1;
+    rest -= 1;
+    p += 1;
+  }
+  return t.tags.map((k, i) => ({
+    key: k,
+    name: DETECTOR_MAP[k].name,
+    short: QC_TAG_SHORT[k],
+    code: QC_TAG_CODE[k],
+    hits: alloc[i],
+    tone: DETECTOR_MAP[k].tone,
+    f1: DETECTOR_MAP[k].f1,
+  }));
+}
+
+export function taskStats(list: QcDetectTask[] = QC_DETECT_TASKS) {
+  const done = list.filter((t) => t.state === "done");
+  return {
+    total: list.length,
+    running: list.filter((t) => t.state === "running").length,
+    failed: list.filter((t) => t.state === "failed").length,
+    pass: done.filter((t) => verdictOf(t) === "pass").length,
+    fail: done.filter((t) => verdictOf(t) === "fail").length,
+    found: list.reduce((s, t) => s + t.found, 0),
+    tickets: list.reduce((s, t) => s + t.ticketIds.length, 0),
+  };
+}
+
+/** 新任务完成后挂一个真实存在的产出对象，避免跳到 404 */
+export function latestReportFor(dataset: string): string | undefined {
+  const hit = QC_REPORTS.filter((r) => r.dataset === dataset).sort((a, b) => (a.id < b.id ? 1 : -1))[0];
+  return hit?.id;
+}
+
+export function ticketsFor(dataset: string, limit = 2): string[] {
+  return QC_TICKETS.filter((t) => t.dataset === dataset)
+    .slice(0, limit)
+    .map((t) => t.id);
+}
+
+/** 数据集与规则标签的下拉/筛选用枚举 */
+export const QC_TASK_DATASETS: string[] = Array.from(new Set(QC_DETECT_TASKS.map((t) => t.dataset)));
+export const QC_TASK_BATCHES: string[] = ["RUN-2001", "RUN-2002", "RUN-2003", "RUN-2004", "RUN-2005", "RUN-2006", "RUN-2007"];
 
 // ---------------------------------------------------------- 检出样例
 export interface QcSample {

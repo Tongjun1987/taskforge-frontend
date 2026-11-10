@@ -15,7 +15,7 @@ const ALL_VIEWS: ViewKey[] = ["rules", "detect", "report", "ticket"];
 
 const VIEW_META: Record<ViewKey, { label: string; desc: string }> = {
   rules: { label: "质量规则配置", desc: "六维质量规则 · 表达式与阈值 · 按数据集与字段配置" },
-  detect: { label: "智能质量检测", desc: "统计分布 · 深度学习噪声 · 语义一致性 · 图像质量" },
+  detect: { label: "智能质量检测", desc: "以检测任务为核心 · 规则标签组合 · 正常出报告 / 异常转工单" },
   report: { label: "质量检测报告", desc: "总分与六维得分 · 问题分布 · 趋势对比 · 随数据集发布" },
   ticket: { label: "质量问题工单", desc: "自动开单 · 分派 · 处理反馈 · 复检验证闭环" },
 };

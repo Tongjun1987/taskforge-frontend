@@ -15,7 +15,7 @@ import {
   Info,
   AlertTriangle,
 } from "lucide-react";
-import { C, Panel, Table, Tag, Bar, Btn, IconBtn, scrollArea, Kv } from "@/components/production/ui";
+import { C, Panel, Table, Tag, Bar, Btn, IconBtn, scrollArea, Kv, Grid } from "@/components/production/ui";
 import { RULE_TEMPLATES } from "@/components/production/mock";
 import {
   QC_DIMS,
@@ -25,10 +25,19 @@ import {
   QC_FIELDS,
   QC_RULE_TYPE_LABEL,
   QC_LEVEL_META,
+  QC_RULE_TAGS,
+  QC_RULE_TAG_MAP,
+  QC_RULE_KINDS,
+  QC_RULE_KIND_MAP,
+  defaultParams,
+  splitThreshold,
+  detectKindKey,
+  tagsOfRule,
   rulesByDim,
   type QcDim,
   type QcLevel,
   type QcRule,
+  type QcRuleTagKey,
   type QcRuleType,
 } from "./qcData";
 
@@ -55,6 +64,10 @@ const FIELD_STYLE: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+const MONO: React.CSSProperties = {
+  fontFamily: "ui-monospace, UI Mono, Menlo, Consolas, monospace",
+};
+
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: C.sub,
@@ -64,38 +77,53 @@ const LABEL_STYLE: React.CSSProperties = {
 
 type Step = 1 | 2 | 3;
 
+interface Pick {
+  kind: string;
+  desc: string;
+  type: QcRuleType;
+  fields: string[];
+  params: Record<string, string>;
+  level: QcLevel;
+  on: boolean;
+}
+
 interface Draft {
   name: string;
   dim: QcDim;
   dataset: string;
-  fields: string[];
-  type: QcRuleType;
-  expr: string;
-  op: string;
-  threshold: string;
+  tags: QcRuleTagKey[];
   sampleRate: number;
-  level: QcLevel;
+  pick: Pick;
   fromTemplate?: string;
 }
+
+const emptyPick = (kindKey: string): Pick => {
+  const k = QC_RULE_KIND_MAP[kindKey] || QC_RULE_KINDS[0];
+  return { kind: k.key, desc: k.desc, type: k.type, fields: [], params: defaultParams(k.key), level: "major", on: true };
+};
 
 const EMPTY_DRAFT: Draft = {
   name: "",
   dim: "completeness",
   dataset: "交通事件识别数据集",
-  fields: [],
-  type: "expression",
-  expr: "",
-  op: "<=",
-  threshold: "",
+  tags: [],
   sampleRate: 100,
-  level: "major",
+  pick: emptyPick("notnull"),
 };
+
+const exprOf = (p: Pick) => {
+  const k = QC_RULE_KIND_MAP[p.kind];
+  return k ? k.build(p.fields, p.params).trim() : "";
+};
+
+const isBalanced = (s: string) => (s.match(/\(/g) || []).length === (s.match(/\)/g) || []).length;
 
 export default function QualityRulesView() {
   const [rules, setRules] = useState<QcRule[]>(QC_RULES);
   const [kw, setKw] = useState("");
   const [dimFilter, setDimFilter] = useState<QcDim | "all">("all");
   const [dsFilter, setDsFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<QcRuleTagKey | "all">("all");
 
   // 弹窗
   const [open, setOpen] = useState(false);
@@ -110,12 +138,45 @@ export default function QualityRulesView() {
   const list = rules.filter((r) => {
     if (dimFilter !== "all" && r.dim !== dimFilter) return false;
     if (dsFilter !== "all" && r.dataset !== dsFilter) return false;
+    if (tagFilter !== "all" && !(r.tags || []).includes(tagFilter)) return false;
     if (kw && !(r.name + r.id + r.expr + r.dataset).toLowerCase().includes(kw.toLowerCase())) return false;
     return true;
   });
 
   const fields = QC_FIELDS[draft.dataset] || [];
-  const exprValid = draft.expr.trim().length > 0 && (draft.expr.match(/\(/g) || []).length === (draft.expr.match(/\)/g) || []).length;
+  const kind = QC_RULE_KIND_MAP[draft.pick.kind];
+  const curExpr = exprOf(draft.pick);
+  const exprOk = curExpr.length > 0 && isBalanced(curExpr);
+  const fieldsOk = draft.pick.fields.length >= (kind?.minFields ?? 1);
+  const step1Ok = draft.name.trim().length > 0 && !!draft.dataset;
+  const step2Ok = fieldsOk && exprOk;
+
+  // 规则库排序：当前维度推荐的排前面
+  const kinds = useMemo(() => {
+    const rank = (k: (typeof QC_RULE_KINDS)[number]) => (k.key === "custom" ? -1 : k.dims.includes(draft.dim) ? 1 : 0);
+    return [...QC_RULE_KINDS].sort((a, b) => rank(b) - rank(a));
+  }, [draft.dim]);
+
+  const patchPick = (patch: Partial<Pick>) => {
+    setDraft((d) => ({ ...d, pick: { ...d.pick, ...patch } }));
+    setRan(null);
+  };
+
+  const chooseKind = (k: (typeof QC_RULE_KINDS)[number]) => {
+    setDraft((d) => {
+      const same = d.pick.kind === k.key;
+      if (same) return d;
+      // 换规则类型：参数回到该类默认值，字段/级别保留，名称若为空则用规则名
+      return {
+        ...d,
+        name: d.name.trim() ? d.name : k.name,
+        // 选中规则自动带上该类标签（可回步骤①调整）
+        tags: Array.from(new Set([...d.tags, ...k.tags])) as QcRuleTagKey[],
+        pick: { ...d.pick, kind: k.key, desc: k.desc, type: k.type, params: defaultParams(k.key) },
+      };
+    });
+    setRan(null);
+  };
 
   const openCreate = () => {
     setDraft(EMPTY_DRAFT);
@@ -126,17 +187,25 @@ export default function QualityRulesView() {
   };
 
   const openEdit = (r: QcRule) => {
+    const kindKey = r.ruleKind && QC_RULE_KIND_MAP[r.ruleKind] ? r.ruleKind : detectKindKey(r.expr);
+    const k = QC_RULE_KIND_MAP[kindKey];
+    const params: Record<string, string> = { ...defaultParams(kindKey), ...(r.params || {}) };
+    if (kindKey === "custom") params.expr = r.expr;
     setDraft({
       name: r.name,
       dim: r.dim,
       dataset: r.dataset,
-      fields: [...r.fields],
-      type: r.type,
-      expr: r.expr,
-      op: r.op,
-      threshold: r.threshold,
+      tags: [...(r.tags || [])],
       sampleRate: r.sampleRate,
-      level: r.level,
+      pick: {
+        kind: kindKey,
+        desc: r.desc || k.desc,
+        type: r.type,
+        fields: [...r.fields],
+        params,
+        level: r.level,
+        on: r.on,
+      },
       fromTemplate: r.fromTemplate,
     });
     setEditingId(r.id);
@@ -150,15 +219,15 @@ export default function QualityRulesView() {
     if (!tpl) return;
     const dimParam = tpl.params.find((p) => p.k === "维度")?.v || "";
     const dimKey = QC_DIMS.find((d) => d.label === dimParam)?.key || "completeness";
-    const threshold = tpl.params.find((p) => p.k !== "维度")?.v || "";
+    const kindKey = detectKindKey(tpl.summary);
+    const k = QC_RULE_KIND_MAP[kindKey];
     setDraft({
       ...EMPTY_DRAFT,
       name: tpl.name,
       dim: dimKey,
-      expr: tpl.summary,
-      threshold,
+      tags: [...k.tags],
+      pick: { ...emptyPick(kindKey), desc: tpl.summary, params: { ...defaultParams(kindKey) } },
       fromTemplate: tpl.id,
-      level: tpl.id === "RUL-QC-001" || tpl.id === "RUL-QC-002" ? "critical" : "major",
     });
     setEditingId(null);
     setStep(1);
@@ -167,49 +236,59 @@ export default function QualityRulesView() {
     setOpen(true);
   };
 
+  const nextRuleId = () => {
+    const nums = rules.map((r) => Number(r.id.replace(/\D/g, "")) || 0);
+    return `QCR-${String(Math.max(18, ...nums) + 1).padStart(4, "0")}`;
+  };
+
   const save = () => {
+    const expr = curExpr;
+    const op = kind?.op || "<=";
     const item: QcRule = {
-      id: editingId || `QCR-${String(rules.length + 1).padStart(4, "0")}`,
+      id: editingId || nextRuleId(),
       name: draft.name || "未命名规则",
       dim: draft.dim,
       dataset: draft.dataset,
-      fields: draft.fields.length ? draft.fields : [fields[0]?.name || "unknown"],
-      type: draft.type,
-      expr: draft.expr,
-      op: draft.op,
-      threshold: draft.threshold || "—",
+      fields: draft.pick.fields.length ? draft.pick.fields : [fields[0]?.name || "unknown"],
+      type: draft.pick.type,
+      expr,
+      op,
+      threshold: splitThreshold(expr, op),
       sampleRate: draft.sampleRate,
-      level: draft.level,
-      on: true,
+      level: draft.pick.level,
+      on: draft.pick.on,
       hits7d: ran?.hits ?? 0,
       owner: "李工 · 数据质量",
-      updatedAt: "2026-10-20 17:50",
+      updatedAt: "2026-11-09 18:20",
       fromTemplate: draft.fromTemplate,
+      tags: draft.tags,
+      ruleKind: draft.pick.kind,
+      params: draft.pick.params,
+      desc: draft.pick.desc,
     };
-    setRules((prev) => (editingId ? prev.map((r) => (r.id === editingId ? { ...item, on: r.on, hits7d: r.hits7d } : r)) : [item, ...prev]));
+    setRules((prev) => (editingId ? prev.map((r) => (r.id === editingId ? { ...item, hits7d: r.hits7d } : r)) : [item, ...prev]));
     setOpen(false);
   };
 
   const runTest = () => {
-    const seed = h32(`${draft.expr}|${draft.dataset}|${draft.fields.join(",")}`);
+    const seed = h32(`${curExpr}|${draft.dataset}|${draft.pick.fields.join(",")}`);
     const total = 100;
     // 阈值越严苛，命中越多；整体控制在 0~12 条，避免"试跑必失败"
     const hits = seed % 13;
     setRan({ hits, total });
   };
 
-  const toggleOn = (id: string) =>
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, on: !r.on } : r)));
+  const toggleOn = (id: string) => setRules((prev) => prev.map((r) => (r.id === id ? { ...r, on: !r.on } : r)));
   const remove = (id: string) => setRules((prev) => prev.filter((r) => r.id !== id));
 
   const stepNext = () => {
-    if (step === 1 && (!draft.name.trim() || !draft.dataset)) return;
-    if (step === 2 && (draft.fields.length === 0 || !exprValid)) return;
+    if (step === 1 && !step1Ok) return;
+    if (step === 2 && !step2Ok) return;
     setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   };
 
   return (
-    <div style={scrollArea}>
+    <div data-view="quality-rules" style={scrollArea}>
       {/* 六维概览 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0,1fr))", gap: 10 }}>
         {dimStats.map((d) => {
@@ -247,7 +326,7 @@ export default function QualityRulesView() {
 
       {/* 工具条 */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", width: 240 }}>
+        <div style={{ position: "relative", width: 228 }}>
           <Search size={13} style={{ position: "absolute", left: 9, top: 9, color: C.faint }} />
           <input
             value={kw}
@@ -257,7 +336,7 @@ export default function QualityRulesView() {
           />
         </div>
 
-        <select value={dsFilter} onChange={(e) => setDsFilter(e.target.value)} style={{ ...FIELD_STYLE, width: 180 }}>
+        <select value={dsFilter} onChange={(e) => setDsFilter(e.target.value)} style={{ ...FIELD_STYLE, width: 168 }}>
           <option value="all">全部数据集</option>
           {QC_DATASETS.map((d) => (
             <option key={d} value={d}>
@@ -269,12 +348,25 @@ export default function QualityRulesView() {
         <select
           value={dimFilter}
           onChange={(e) => setDimFilter(e.target.value as QcDim | "all")}
-          style={{ ...FIELD_STYLE, width: 140 }}
+          style={{ ...FIELD_STYLE, width: 128 }}
         >
           <option value="all">全部维度</option>
           {QC_DIMS.map((d) => (
             <option key={d.key} value={d.key}>
               {d.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value as QcRuleTagKey | "all")}
+          style={{ ...FIELD_STYLE, width: 152 }}
+        >
+          <option value="all">全部规则标签</option>
+          {QC_RULE_TAGS.map((t) => (
+            <option key={t.key} value={t.key}>
+              {t.label}
             </option>
           ))}
         </select>
@@ -296,35 +388,63 @@ export default function QualityRulesView() {
       {/* 规则列表 */}
       <Panel style={{ marginTop: 12 }} bodyStyle={{ padding: 0 }}>
         <Table
-          head={["规则", "维度", "适用对象", "类型", "校验表达式", "阈值", "级别", "近7天命中", "状态", "操作"]}
-          widths={["18%", "7%", "17%", "6%", "25%", "8%", "6%", "7%", "8%", "auto"]}
+          head={["规则", "规则标签", "维度", "适用对象", "类型", "校验表达式", "阈值", "级别", "近7天命中", "状态", "操作"]}
+          widths={["16%", "11%", "6%", "16%", "6%", "20%", "7%", "5%", "6%", "7%", "auto"]}
           rows={list.map((r) => {
             const d = QC_DIM_MAP[r.dim];
             const lv = QC_LEVEL_META[r.level];
+            const tags = tagsOfRule(r);
             return [
               <div key="n">
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
                   {r.name}
                   {r.fromTemplate && <Tag tone={C.faint}>模板</Tag>}
                 </div>
-                <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: C.faint, marginTop: 2, whiteSpace: "nowrap" }}>
                   {r.id} · {r.owner}
                 </div>
+              </div>,
+              <div key="g" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {tags.length === 0 ? (
+                  <span style={{ fontSize: 11, color: C.faint }}>未打标签</span>
+                ) : (
+                  <>
+                    {tags.slice(0, 2).map((t) => (
+                      <span
+                        key={t.key}
+                        title={`${t.label} · ${t.code}`}
+                        style={{
+                          fontSize: 11,
+                          lineHeight: "18px",
+                          padding: "0 6px",
+                          borderRadius: 4,
+                          color: t.tone,
+                          background: t.soft,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t.short}
+                      </span>
+                    ))}
+                    {tags.length > 2 && <span style={{ fontSize: 11, color: C.faint, lineHeight: "18px" }}>+{tags.length - 2}</span>}
+                  </>
+                )}
               </div>,
               <Tag key="d" tone={d.tone} soft={d.soft}>
                 {d.label}
               </Tag>,
               <div key="o">
-                <div style={{ fontSize: 12, color: C.text }}>{r.dataset}</div>
-                <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>
-                  {r.fields.slice(0, 3).join(" · ")}
-                  {r.fields.length > 3 ? ` 等 ${r.fields.length} 个字段` : ""}
+                <div style={{ fontSize: 12, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.dataset}</div>
+                <div style={{ fontSize: 11, color: C.faint, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.fields.slice(0, 2).join(" · ")}
+                  {r.fields.length > 2 ? ` 等 ${r.fields.length} 个` : ""}
                 </div>
               </div>,
               <Tag key="t">{QC_RULE_TYPE_LABEL[r.type]}</Tag>,
               <code
                 key="e"
                 style={{
+                  ...MONO,
                   fontSize: 11,
                   color: "#4338ca",
                   background: C.primarySoft,
@@ -339,14 +459,14 @@ export default function QualityRulesView() {
                 }}
                 title={r.expr}
               >
-                {r.expr}
+                {r.expr.length > 30 ? r.expr.slice(0, 30) + "…" : r.expr}
               </code>,
               <span
                 key="th"
                 style={{
-                  fontSize: 12,
+                  ...MONO,
+                  fontSize: 11,
                   color: C.text,
-                  fontFamily: "ui-monospace, monospace",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -390,7 +510,7 @@ export default function QualityRulesView() {
 
       {/* ============ 新建 / 编辑规则弹窗 ============ */}
       {open && (
-        <Modal onClose={() => setOpen(false)} width={720}>
+        <Modal onClose={() => setOpen(false)} width={step === 2 ? 880 : 760}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.border}` }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{editingId ? "编辑质检规则" : "新建质检规则"}</div>
@@ -405,7 +525,7 @@ export default function QualityRulesView() {
           <div style={{ display: "flex", alignItems: "center", padding: "12px 18px", borderBottom: `1px solid ${C.borderSoft}`, background: C.bg }}>
             {[
               { n: 1, label: "维度与对象" },
-              { n: 2, label: "字段与表达式" },
+              { n: 2, label: "规则与参数" },
               { n: 3, label: "阈值与试跑" },
             ].map((s, i) => (
               <React.Fragment key={s.n}>
@@ -436,8 +556,8 @@ export default function QualityRulesView() {
             ))}
           </div>
 
-          <div style={{ padding: 18, maxHeight: "56vh", overflowY: "auto" }}>
-            {/* ---- 步骤 1 ---- */}
+          <div style={{ padding: 18, maxHeight: "58vh", overflowY: "auto" }}>
+            {/* ---- 步骤 1：维度与对象（含规则标签选择） ---- */}
             {step === 1 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
@@ -480,11 +600,79 @@ export default function QualityRulesView() {
                   </div>
                 </div>
 
+                {/* 规则标签选择 */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <label style={{ ...LABEL_STYLE, marginBottom: 0 }}>
+                      规则标签（可多选，已选 {draft.tags.length} 个）
+                      <span style={{ color: C.faint, marginLeft: 8 }}>能力类标签会同步到检测任务，用于按标签聚合与筛选</span>
+                    </label>
+                    {draft.tags.length > 0 && (
+                      <button
+                        onClick={() => setDraft({ ...draft, tags: [] })}
+                        style={{ fontSize: 11, color: C.faint, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        清空
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 6 }}>
+                    {QC_RULE_TAGS.map((t) => {
+                      const on = draft.tags.includes(t.key);
+                      return (
+                        <button
+                          key={t.key}
+                          onClick={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              tags: d.tags.includes(t.key) ? d.tags.filter((x) => x !== t.key) : [...d.tags, t.key],
+                            }))
+                          }
+                          title={t.desc}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            padding: "7px 9px",
+                            borderRadius: 6,
+                            textAlign: "left",
+                            cursor: "pointer",
+                            border: `1px solid ${on ? t.tone : C.border}`,
+                            background: on ? t.soft : "#fff",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 3,
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              border: `1px solid ${on ? t.tone : C.border}`,
+                              background: on ? t.tone : "#fff",
+                            }}
+                          >
+                            {on && <Check size={9} style={{ color: "#fff" }} />}
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: "block", fontSize: 12, fontWeight: on ? 600 : 400, color: on ? t.tone : C.text }}>
+                              {t.label}
+                            </span>
+                            <span style={{ display: "block", fontSize: 10, color: C.faint, ...MONO }}>{t.code}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div>
                   <label style={LABEL_STYLE}>适用数据集</label>
                   <select
                     value={draft.dataset}
-                    onChange={(e) => setDraft({ ...draft, dataset: e.target.value, fields: [] })}
+                    onChange={(e) => setDraft({ ...draft, dataset: e.target.value, pick: { ...draft.pick, fields: [] } })}
                     style={FIELD_STYLE}
                   >
                     {QC_DATASETS.map((d) => (
@@ -497,134 +685,327 @@ export default function QualityRulesView() {
               </div>
             )}
 
-            {/* ---- 步骤 2 ---- */}
+            {/* ---- 步骤 2：规则选择 + 规则参数配置 ---- */}
             {step === 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={LABEL_STYLE}>
-                    适用字段（可多选，已选 {draft.fields.length} 个）
-                  </label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {fields.map((f) => {
-                      const on = draft.fields.includes(f.name);
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                    <label style={{ ...LABEL_STYLE, marginBottom: 0 }}>
+                      ① 选择规则
+                      <span style={{ color: C.faint, marginLeft: 8 }}>
+                        规则库 {QC_RULE_KINDS.length} 类 · 已选 1 类 · 与「{QC_DIM_MAP[draft.dim].label}」匹配的排前面
+                      </span>
+                    </label>
+                    <span style={{ fontSize: 11, color: C.faint }}>选中后自动带入默认参数与规则标签</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6 }}>
+                    {kinds.map((k) => {
+                      const on = draft.pick.kind === k.key;
+                      const rec = k.dims.includes(draft.dim);
                       return (
                         <button
-                          key={f.name}
-                          onClick={() =>
-                            setDraft({
-                              ...draft,
-                              fields: on ? draft.fields.filter((x) => x !== f.name) : [...draft.fields, f.name],
-                            })
-                          }
+                          key={k.key}
+                          onClick={() => chooseKind(k)}
+                          title={k.desc}
                           style={{
-                            padding: "5px 9px",
-                            borderRadius: 5,
-                            fontSize: 12,
+                            position: "relative",
+                            textAlign: "left",
+                            padding: "8px 10px",
+                            borderRadius: 6,
                             cursor: "pointer",
                             border: `1px solid ${on ? C.primary : C.border}`,
                             background: on ? C.primarySoft : "#fff",
-                            color: on ? C.primary : C.sub,
+                            minWidth: 0,
                           }}
                         >
-                          {f.label}
-                          <span style={{ fontSize: 10, marginLeft: 5, color: C.faint }}>{f.type}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 12, fontWeight: on ? 600 : 500, color: on ? C.primary : C.text }}>{k.name}</span>
+                            {rec && (
+                              <span style={{ fontSize: 9, color: C.primary, background: "#fff", border: `1px solid ${C.primary}44`, borderRadius: 3, padding: "0 3px" }}>
+                                推荐
+                              </span>
+                            )}
+                            <div style={{ flex: 1 }} />
+                            {on && <Check size={12} style={{ color: C.primary }} />}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: C.faint,
+                              marginTop: 3,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {k.cat} · {k.fieldsHint}
+                          </div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={LABEL_STYLE}>规则类型</label>
-                    <select
-                      value={draft.type}
-                      onChange={(e) => setDraft({ ...draft, type: e.target.value as QcRuleType })}
-                      style={FIELD_STYLE}
-                    >
-                      <option value="expression">表达式（支持 AND / OR 组合）</option>
-                      <option value="threshold">阈值（单指标比较）</option>
-                      <option value="script">脚本（自定义 Python UDF）</option>
-                      <option value="enum">枚举（白名单 / 字典校验）</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LABEL_STYLE}>严重级别（命中后生成的工单级别）</label>
-                    <select
-                      value={draft.level}
-                      onChange={(e) => setDraft({ ...draft, level: e.target.value as QcLevel })}
-                      style={FIELD_STYLE}
-                    >
-                      <option value="critical">严重 · 阻断下游</option>
-                      <option value="major">一般 · 需处理后放行</option>
-                      <option value="minor">提示 · 记录不改写</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div>
-                  <label style={LABEL_STYLE}>
-                    校验表达式
-                    <span style={{ color: C.faint, marginLeft: 8 }}>
-                      支持 null_ratio / range_between / enum_in / regex_match / count_dup / iou / match_rate
-                    </span>
-                  </label>
-                  <textarea
-                    value={draft.expr}
-                    onChange={(e) => setDraft({ ...draft, expr: e.target.value })}
-                    rows={3}
-                    spellCheck={false}
-                    placeholder="null_ratio(event_type, start_time) <= 0.001"
-                    style={{
-                      ...FIELD_STYLE,
-                      height: "auto",
-                      padding: 10,
-                      fontFamily: "ui-monospace, monospace",
-                      fontSize: 12,
-                      lineHeight: 1.6,
-                      resize: "vertical",
-                    }}
-                  />
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 11 }}>
-                    {draft.expr.trim() === "" ? (
-                      <span style={{ color: C.faint }}>尚未填写表达式</span>
-                    ) : exprValid ? (
-                      <span style={{ color: C.success, display: "flex", alignItems: "center", gap: 4 }}>
-                        <Check size={12} /> 语法校验通过
+                  <label style={LABEL_STYLE}>② 规则参数配置</label>
+                  <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                    {/* 卡片头 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "9px 12px",
+                        background: C.bg,
+                        borderBottom: `1px solid ${C.borderSoft}`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 4,
+                          background: C.primary,
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        1
                       </span>
-                    ) : (
-                      <span style={{ color: C.danger, display: "flex", alignItems: "center", gap: 4 }}>
-                        <AlertTriangle size={12} /> 括号不匹配，请检查表达式
-                      </span>
-                    )}
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{kind?.name}</span>
+                      <Tag tone={C.sub}>{kind?.cat}</Tag>
+                      {draft.tags.slice(0, 4).map((tk) => {
+                        const t = QC_RULE_TAG_MAP[tk];
+                        return (
+                          <Tag key={tk} tone={t.tone} soft={t.soft}>
+                            {t.short}
+                          </Tag>
+                        );
+                      })}
+                      <div style={{ flex: 1 }} />
+                      <span style={{ fontSize: 11, color: C.faint }}>是否启用</span>
+                      <Switch on={draft.pick.on} onChange={(v) => patchPick({ on: v })} />
+                    </div>
+
+                    {/* 卡片体 */}
+                    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                      <Grid cols={2}>
+                        <div>
+                          <label style={LABEL_STYLE}>规则名</label>
+                          <input
+                            value={draft.name}
+                            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                            placeholder="如：事件类型值域校验"
+                            style={FIELD_STYLE}
+                          />
+                        </div>
+                        <div>
+                          <label style={LABEL_STYLE}>中文描述</label>
+                          <input
+                            value={draft.pick.desc}
+                            onChange={(e) => patchPick({ desc: e.target.value })}
+                            style={FIELD_STYLE}
+                          />
+                        </div>
+                      </Grid>
+
+                      <Grid cols={3}>
+                        <div>
+                          <label style={LABEL_STYLE}>规则类</label>
+                          <input readOnly value={kind?.cat || "—"} style={{ ...FIELD_STYLE, background: C.bg, color: C.sub }} />
+                        </div>
+                        <div>
+                          <label style={LABEL_STYLE}>规则类型</label>
+                          <select
+                            value={draft.pick.type}
+                            onChange={(e) => patchPick({ type: e.target.value as QcRuleType })}
+                            style={FIELD_STYLE}
+                          >
+                            <option value="expression">表达式（支持 AND / OR 组合）</option>
+                            <option value="threshold">阈值（单指标比较）</option>
+                            <option value="script">脚本（自定义 Python UDF）</option>
+                            <option value="enum">枚举（白名单 / 字典校验）</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={LABEL_STYLE}>严重级别（命中后生成的工单级别）</label>
+                          <select
+                            value={draft.pick.level}
+                            onChange={(e) => patchPick({ level: e.target.value as QcLevel })}
+                            style={FIELD_STYLE}
+                          >
+                            <option value="critical">严重 · 阻断下游</option>
+                            <option value="major">一般 · 需处理后放行</option>
+                            <option value="minor">提示 · 记录不改写</option>
+                          </select>
+                        </div>
+                      </Grid>
+
+                      {kind && !kind.dims.includes(draft.dim) && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 11,
+                            color: "#b45309",
+                            background: C.warnSoft,
+                            border: `1px solid ${C.warn}33`,
+                            borderRadius: 6,
+                            padding: "6px 9px",
+                          }}
+                        >
+                          <Info size={12} />
+                          该规则通常归属「{kind.dims.map((d) => QC_DIM_MAP[d].label).join(" / ")}」，当前维度为
+                          「{QC_DIM_MAP[draft.dim].label}」
+                          <button
+                            onClick={() => setDraft((d) => ({ ...d, dim: kind.dims[0] }))}
+                            style={{
+                              marginLeft: "auto",
+                              fontSize: 11,
+                              color: C.primary,
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            改用推荐维度
+                          </button>
+                        </div>
+                      )}
+
+                      <div>
+                        <label style={LABEL_STYLE}>
+                          适用字段
+                          <span style={{ color: C.faint, marginLeft: 8 }}>
+                            {kind?.fieldsHint}
+                            {kind?.minFields ? `，至少 ${kind.minFields} 个` : "，可选"} · 已选 {draft.pick.fields.length} 个
+                          </span>
+                        </label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {fields.map((f) => {
+                            const on = draft.pick.fields.includes(f.name);
+                            return (
+                              <button
+                                key={f.name}
+                                onClick={() =>
+                                  patchPick({
+                                    fields: on ? draft.pick.fields.filter((x) => x !== f.name) : [...draft.pick.fields, f.name],
+                                  })
+                                }
+                                style={{
+                                  padding: "5px 9px",
+                                  borderRadius: 5,
+                                  fontSize: 12,
+                                  cursor: "pointer",
+                                  border: `1px solid ${on ? C.primary : C.border}`,
+                                  background: on ? C.primarySoft : "#fff",
+                                  color: on ? C.primary : C.sub,
+                                }}
+                              >
+                                {f.label}
+                                <span style={{ fontSize: 10, marginLeft: 5, color: C.faint }}>{f.type}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 参数区：按规则类型动态渲染 */}
+                      {kind && kind.params.length > 0 && (
+                        <div>
+                          <label style={LABEL_STYLE}>规则参数</label>
+                          <Grid cols="repeat(2, minmax(0,1fr))">
+                            {kind.params.map((p) => (
+                              <div key={p.k} style={{ gridColumn: p.wide ? "span 2" : "auto" }}>
+                                <label style={{ ...LABEL_STYLE, color: C.faint, marginBottom: 4 }}>
+                                  {p.label}
+                                  {p.hint && <span style={{ marginLeft: 6 }}>{p.hint}</span>}
+                                </label>
+                                <input
+                                  value={draft.pick.params[p.k] ?? ""}
+                                  onChange={(e) => patchPick({ params: { ...draft.pick.params, [p.k]: e.target.value } })}
+                                  placeholder={p.ph}
+                                  style={{
+                                    ...FIELD_STYLE,
+                                    ...(p.kind === "regex" || p.kind === "path" || p.kind === "list" ? { ...MONO, fontSize: 12 } : {}),
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </Grid>
+                        </div>
+                      )}
+
+                      <div>
+                        <label style={{ ...LABEL_STYLE, color: C.faint }}>原始说明（规则库）</label>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: C.sub,
+                            background: C.bg,
+                            border: `1px dashed ${C.border}`,
+                            borderRadius: 6,
+                            padding: "7px 10px",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          {kind?.desc}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ ...LABEL_STYLE, color: C.faint }}>生成表达式</label>
+                        <div
+                          style={{
+                            ...MONO,
+                            fontSize: 12,
+                            color: "#4338ca",
+                            background: C.primarySoft,
+                            border: `1px solid ${C.primary}22`,
+                            borderRadius: 6,
+                            padding: "8px 10px",
+                            lineHeight: 1.6,
+                            wordBreak: "break-all",
+                            minHeight: 34,
+                          }}
+                        >
+                          {curExpr || "（选好规则与参数后自动生成）"}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 11 }}>
+                          {!curExpr ? (
+                            <span style={{ color: C.faint }}>尚未生成表达式</span>
+                          ) : exprOk && fieldsOk ? (
+                            <span style={{ color: C.success, display: "flex", alignItems: "center", gap: 4 }}>
+                              <Check size={12} /> 语法校验通过 · 阈值 {splitThreshold(curExpr, kind?.op || "<=")}
+                            </span>
+                          ) : !exprOk ? (
+                            <span style={{ color: C.danger, display: "flex", alignItems: "center", gap: 4 }}>
+                              <AlertTriangle size={12} /> 括号不匹配，请检查参数
+                            </span>
+                          ) : null}
+                          {!fieldsOk && (
+                            <span style={{ color: C.warn, display: "flex", alignItems: "center", gap: 4, marginLeft: 8 }}>
+                              <Info size={12} /> 还需选择 {kind ? kind.minFields - draft.pick.fields.length : 0} 个字段
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ---- 步骤 3 ---- */}
+            {/* ---- 步骤 3：阈值与试跑 ---- */}
             {step === 3 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={LABEL_STYLE}>比较符</label>
-                    <select value={draft.op} onChange={(e) => setDraft({ ...draft, op: e.target.value })} style={FIELD_STYLE}>
-                      {[">=", "<=", "=", ">", "<"].map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LABEL_STYLE}>阈值</label>
-                    <input
-                      value={draft.threshold}
-                      onChange={(e) => setDraft({ ...draft, threshold: e.target.value })}
-                      placeholder="如 99.5% / 0.85 / 0 条"
-                      style={FIELD_STYLE}
-                    />
-                  </div>
+                <Grid cols={2}>
                   <div>
                     <label style={LABEL_STYLE}>采样率（%）</label>
                     <input
@@ -636,7 +1017,15 @@ export default function QualityRulesView() {
                       style={FIELD_STYLE}
                     />
                   </div>
-                </div>
+                  <div>
+                    <label style={LABEL_STYLE}>判定阈值（由规则参数生成，不可直接改）</label>
+                    <input
+                      readOnly
+                      value={`${kind?.op || "<="} ${splitThreshold(curExpr, kind?.op || "<=")}`}
+                      style={{ ...FIELD_STYLE, ...MONO, background: C.bg, color: C.text }}
+                    />
+                  </div>
+                </Grid>
 
                 <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -648,22 +1037,20 @@ export default function QualityRulesView() {
                     </Btn>
                   </div>
                   <div style={{ fontSize: 12, color: C.faint, marginTop: 6 }}>
-                    从「{draft.dataset}」随机抽取 100 条样本，按当前表达式与阈值判定命中情况
+                    从「{draft.dataset}」随机抽取 100 条样本，按「{draft.name || "未命名规则"}」当前表达式与阈值判定命中情况
                   </div>
 
                   {ran ? (
                     <div style={{ marginTop: 12 }}>
                       <div style={{ display: "flex", gap: 20, alignItems: "flex-end" }}>
                         <div>
-                          <div style={{ fontSize: 24, fontWeight: 700, color: ran.hits > 0 ? C.danger : C.success }}>
-                            {ran.hits}
-                          </div>
+                          <div style={{ fontSize: 24, fontWeight: 700, color: ran.hits > 0 ? C.danger : C.success }}>{ran.hits}</div>
                           <div style={{ fontSize: 11, color: C.faint }}>命中样本（共 {ran.total} 条）</div>
                         </div>
                         <div style={{ flex: 1 }}>
                           <Bar pct={(ran.hits / ran.total) * 100} tone={ran.hits > 10 ? C.danger : C.warn} h={6} />
                           <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>
-                            命中率 {(ran.hits / ran.total * 100).toFixed(1)}%
+                            命中率 {((ran.hits / ran.total) * 100).toFixed(1)}%
                             {ran.hits > 10 ? " · 命中偏高，建议复核阈值是否过严" : " · 命中率处于合理区间"}
                           </div>
                         </div>
@@ -677,10 +1064,52 @@ export default function QualityRulesView() {
                 <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>规则摘要</div>
                   <Kv k="规则名称" v={draft.name || "—"} w={72} />
-                  <Kv k="质量维度" v={<Tag tone={QC_DIM_MAP[draft.dim].tone} soft={QC_DIM_MAP[draft.dim].soft}>{QC_DIM_MAP[draft.dim].label}</Tag>} w={72} />
-                  <Kv k="适用对象" v={`${draft.dataset} · ${draft.fields.join(", ") || "—"}`} w={72} />
-                  <Kv k="判定条件" v={<code style={{ fontSize: 11, color: "#4338ca" }}>{draft.expr || "—"} {draft.op} {draft.threshold || "—"}</code>} w={72} />
-                  <Kv k="命中处置" v={QC_LEVEL_META[draft.level].label + (draft.level === "critical" ? " · 自动开工单并阻断下游" : draft.level === "major" ? " · 自动开工单" : " · 仅记录")} w={72} />
+                  <Kv
+                    k="质量维度"
+                    v={
+                      <Tag tone={QC_DIM_MAP[draft.dim].tone} soft={QC_DIM_MAP[draft.dim].soft}>
+                        {QC_DIM_MAP[draft.dim].label}
+                      </Tag>
+                    }
+                    w={72}
+                  />
+                  <Kv
+                    k="规则标签"
+                    v={
+                      draft.tags.length ? (
+                        <span style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {draft.tags.map((tk) => {
+                            const t = QC_RULE_TAG_MAP[tk];
+                            return (
+                              <Tag key={tk} tone={t.tone} soft={t.soft}>
+                                {t.label}
+                              </Tag>
+                            );
+                          })}
+                        </span>
+                      ) : (
+                        <span style={{ color: C.faint }}>未打标签</span>
+                      )
+                    }
+                    w={72}
+                  />
+                  <Kv k="适用对象" v={`${draft.dataset} · ${draft.pick.fields.join(", ") || "—"}`} w={72} />
+                  <Kv k="规则类" v={`${kind?.name || "—"} · ${kind?.cat || ""} · ${QC_RULE_TYPE_LABEL[draft.pick.type]}`} w={72} />
+                  <Kv
+                    k="判定条件"
+                    v={
+                      <code style={{ ...MONO, fontSize: 11, color: "#4338ca", wordBreak: "break-all" }}>{curExpr || "—"}</code>
+                    }
+                    w={72}
+                  />
+                  <Kv
+                    k="命中处置"
+                    v={
+                      QC_LEVEL_META[draft.pick.level].label +
+                      (draft.pick.level === "critical" ? " · 自动开工单并阻断下游" : draft.pick.level === "major" ? " · 自动开工单" : " · 仅记录")
+                    }
+                    w={72}
+                  />
                 </div>
               </div>
             )}
@@ -701,7 +1130,7 @@ export default function QualityRulesView() {
                 <Btn
                   tone="primary"
                   icon={<ChevronRight size={13} />}
-                  disabled={(step === 1 && !draft.name.trim()) || (step === 2 && (draft.fields.length === 0 || !exprValid))}
+                  disabled={(step === 1 && !step1Ok) || (step === 2 && !step2Ok)}
                   onClick={stepNext}
                 >
                   下一步
@@ -765,6 +1194,41 @@ export default function QualityRulesView() {
         </Modal>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------- 轻量开关
+function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      role="switch"
+      aria-checked={on}
+      style={{
+        width: 34,
+        height: 18,
+        borderRadius: 9,
+        border: "none",
+        padding: 2,
+        cursor: "pointer",
+        background: on ? C.primary : C.border,
+        display: "flex",
+        alignItems: "center",
+        transition: "background .15s",
+      }}
+    >
+      <span
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: "#fff",
+          transform: on ? "translateX(16px)" : "translateX(0)",
+          transition: "transform .15s",
+          boxShadow: "0 1px 2px rgba(15,23,42,.2)",
+        }}
+      />
+    </button>
   );
 }
 
