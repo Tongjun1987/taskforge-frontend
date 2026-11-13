@@ -1,6 +1,5 @@
 "use client";
 import { TopNavBar, Sidebar } from "@/components/layout/TopNavBar";
-import { Toaster } from "react-hot-toast";
 import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -29,7 +28,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
       </div>
-      <Toaster position="top-right" />
     </div>
   );
 }

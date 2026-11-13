@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Search, Filter, Download, Heart, Star, Eye, ChevronDown,
-  Database, Brain, Sparkles, Image, Mic, Video, Code, Zap,
-  ArrowUpDown, Grid3X3, List, SlidersHorizontal, RefreshCw,
-  BookOpen, Box, Globe, MessageSquare, Layers, FileText,
-  Table, BarChart3, GitBranch, HardDrive
+  Search, Download, Heart, ChevronRight,
+  Database, Image, Mic, Code, Layers, FileText,
+  Table, BarChart3, GitBranch, Grid3X3, List, MessageSquare,
 } from "lucide-react";
+import { DATASETS, type Dataset } from "@/components/service/datasetCatalog";
 
 // ── 数据集类型筛选 ──
 const DATA_CATEGORIES = [
@@ -18,130 +18,6 @@ const DATA_CATEGORIES = [
   { key: "tabular", label: "表格数据", icon: Table },
   { key: "timeseries", label: "时序数据", icon: BarChart3 },
   { key: "graph", label: "图数据", icon: GitBranch },
-];
-
-// ── Mock 数据集 ──
-const MOCK_DATASETS = [
-  {
-    id: "d1", name: "COIG-CQIA 中文高质量指令数据集", org: "COIG",
-    desc: "涵盖多个领域的高质量中文指令微调数据集，包含问答、摘要、翻译、代码等任务",
-    category: "nlp", subCategory: "指令微调",
-    size: "3.2GB", samples: 68420, license: "CC BY 4.0",
-    downloads: 89230, likes: 2340, stars: 3670,
-    tags: ["中文", "指令微调", "多领域"],
-    format: "JSON", updated: "3天前",
-    hot: true,
-  },
-  {
-    id: "d2", name: "COCO-2024 图像描述与检测数据集", org: "Microsoft",
-    desc: "COCO数据集2024版扩展，包含33万张图像，支持目标检测、分割和图像描述",
-    category: "cv", subCategory: "目标检测",
-    size: "25.6GB", samples: 330000, license: "CC BY 4.0",
-    downloads: 234560, likes: 6780, stars: 9120,
-    tags: ["图像描述", "目标检测", "分割"],
-    format: "JSON + Images", updated: "1周前",
-    hot: true,
-  },
-  {
-    id: "d3", name: "AIShell-2 中文语音识别数据集", org: "AIShell",
-    desc: "1000小时中文语音识别训练数据，覆盖多方言和多场景",
-    category: "audio", subCategory: "语音识别",
-    size: "18.4GB", samples: 500000, license: "CC BY-SA 4.0",
-    downloads: 56780, likes: 1890, stars: 2560,
-    tags: ["中文语音", "ASR", "多方言"],
-    format: "WAV + JSON", updated: "2周前",
-    hot: false,
-  },
-  {
-    id: "d4", name: "MME 多模态评估基准", org: "OpenGVLab",
-    desc: "综合多模态模型评估基准，涵盖感知和认知两大维度14个子任务",
-    category: "multimodal", subCategory: "评估基准",
-    size: "1.8GB", samples: 2860, license: "Apache 2.0",
-    downloads: 45230, likes: 1560, stars: 2340,
-    tags: ["评估基准", "多模态", "感知认知"],
-    format: "JSON + Images", updated: "5天前",
-    hot: true,
-  },
-  {
-    id: "d5", name: "Waymo Open Dataset", org: "Waymo",
-    desc: "自动驾驶场景数据集，包含激光雷达点云、摄像头图像和3D标注",
-    category: "cv", subCategory: "自动驾驶",
-    size: "120GB", samples: 200000, license: "Custom",
-    downloads: 78900, likes: 3450, stars: 5670,
-    tags: ["自动驾驶", "3D标注", "点云"],
-    format: "TFRecord", updated: "1月前",
-    hot: false,
-  },
-  {
-    id: "d6", name: "Alpaca-GPT4 中文指令数据集", org: "Stanford",
-    desc: "基于GPT-4生成的中文指令数据集，包含5.2万条高质量指令-回复对",
-    category: "nlp", subCategory: "指令微调",
-    size: "890MB", samples: 52000, license: "MIT",
-    downloads: 156780, likes: 4560, stars: 6890,
-    tags: ["GPT-4", "中文指令", "SFT"],
-    format: "JSON", updated: "3周前",
-    hot: false,
-  },
-  {
-    id: "d7", name: "ETTh1 电力负荷时序数据", org: "THUML",
-    desc: "电力变压器温度数据集，多变量时序预测常用基准，7个特征维度",
-    category: "timeseries", subCategory: "时序预测",
-    size: "45MB", samples: 17420, license: "MIT",
-    downloads: 34560, likes: 890, stars: 1340,
-    tags: ["时序预测", "电力", "多变量"],
-    format: "CSV", updated: "2月前",
-    hot: false,
-  },
-  {
-    id: "d8", name: "OpenKG 中文知识图谱数据集", org: "OpenKG",
-    desc: "大规模中文知识图谱，涵盖百科、医疗、金融等领域实体与关系",
-    category: "graph", subCategory: "知识图谱",
-    size: "5.6GB", samples: 1200000, license: "CC BY-SA 4.0",
-    downloads: 23450, likes: 670, stars: 980,
-    tags: ["知识图谱", "中文", "多领域"],
-    format: "RDF/N-Triples", updated: "1月前",
-    hot: false,
-  },
-  {
-    id: "d9", name: "MMLU-Pro 大规模多任务语言理解", org: "Hendrycks Lab",
-    desc: "MMLU增强版，涵盖57个学科14K问题，适合大模型知识能力评估",
-    category: "nlp", subCategory: "评估基准",
-    size: "320MB", samples: 14000, license: "MIT",
-    downloads: 67890, likes: 2890, stars: 4120,
-    tags: ["评估基准", "多学科", "知识推理"],
-    format: "JSON", updated: "4天前",
-    hot: true,
-  },
-  {
-    id: "d10", name: "UrbanScene3D 城市三维场景数据集", org: "WHU",
-    desc: "大规模城市三维场景数据集，包含建筑、道路、植被等语义标注",
-    category: "cv", subCategory: "3D场景",
-    size: "48GB", samples: 15000, license: "CC BY 4.0",
-    downloads: 12340, likes: 560, stars: 780,
-    tags: ["3D场景", "城市", "语义分割"],
-    format: "PLY + JSON", updated: "3周前",
-    hot: false,
-  },
-  {
-    id: "d11", name: "LIBERO 机器人操作基准", org: "Stanford",
-    desc: "机器人操作任务基准，包含130个长时序操作任务和仿真环境",
-    category: "multimodal", subCategory: "机器人操作",
-    size: "12GB", samples: 130, license: "MIT",
-    downloads: 8760, likes: 340, stars: 520,
-    tags: ["机器人", "操作任务", "仿真"],
-    format: "HDF5", updated: "2周前",
-    hot: false,
-  },
-  {
-    id: "d12", name: "UCI Adult 人口普查表格数据", org: "UCI",
-    desc: "经典表格分类数据集，含48842条人口普查记录，14个属性特征",
-    category: "tabular", subCategory: "分类",
-    size: "4MB", samples: 48842, license: "CC BY 4.0",
-    downloads: 198760, likes: 1230, stars: 1890,
-    tags: ["表格数据", "分类", "经典数据集"],
-    format: "CSV", updated: "6月前",
-    hot: false,
-  },
 ];
 
 function formatNum(n: number) {
@@ -159,12 +35,15 @@ function getCatColor(cat: string) {
 }
 
 export default function DatasetServicePage() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"downloads" | "likes" | "samples">("downloads");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const filteredDatasets = MOCK_DATASETS
+  const open = (id: string) => router.push(`/service/datasets/${id}`);
+
+  const filteredDatasets = DATASETS
     .filter(d => activeCategory === "all" || d.category === activeCategory)
     .filter(d =>
       !searchQuery ||
@@ -195,7 +74,7 @@ export default function DatasetServicePage() {
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>高质量数据集</h1>
             <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>
-              发现和使用高质量数据集 · 共 {MOCK_DATASETS.length} 个数据集
+              发现和使用高质量数据集 · 共 {DATASETS.length} 个数据集
             </p>
           </div>
         </div>
@@ -316,6 +195,7 @@ export default function DatasetServicePage() {
         <span style={{ fontSize: 12, color: "#94a3b8" }}>
           找到 <b style={{ color: "#059669" }}>{filteredDatasets.length}</b> 个数据集
         </span>
+        <span style={{ fontSize: 11.5, color: "#cbd5e1" }}>点击卡片查看发布信息与数据使用方式</span>
       </div>
 
       {/* 数据集卡片网格 */}
@@ -326,13 +206,13 @@ export default function DatasetServicePage() {
           gap: 16,
         }}>
           {filteredDatasets.map(ds => (
-            <DatasetCard key={ds.id} dataset={ds} />
+            <DatasetCard key={ds.id} dataset={ds} onOpen={() => open(ds.id)} />
           ))}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filteredDatasets.map(ds => (
-            <DatasetListItem key={ds.id} dataset={ds} />
+            <DatasetListItem key={ds.id} dataset={ds} onOpen={() => open(ds.id)} />
           ))}
         </div>
       )}
@@ -353,7 +233,7 @@ export default function DatasetServicePage() {
 }
 
 // ── 卡片组件 ──
-function DatasetCard({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
+function DatasetCard({ dataset, onOpen }: { dataset: Dataset; onOpen: () => void }) {
   const catColor = getCatColor(dataset.category);
   const [liked, setLiked] = useState(false);
 
@@ -364,6 +244,7 @@ function DatasetCard({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
       transition: "all 0.2s", cursor: "pointer",
       position: "relative",
     }}
+    onClick={onOpen}
     onMouseEnter={e => {
       (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)";
       (e.currentTarget as HTMLElement).style.borderColor = "#a7f3d0";
@@ -401,6 +282,7 @@ function DatasetCard({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {dataset.name}
+            <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, marginLeft: 3 }}>{dataset.version}</span>
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8" }}>
             {dataset.org} · {dataset.size}
@@ -467,7 +349,7 @@ function DatasetCard({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
           }}>
             {dataset.format}
           </span>
-          <span style={{ fontSize: 10, color: "#cbd5e1" }}>{dataset.updated}</span>
+          <ChevronRight size={13} style={{ color: "#cbd5e1" }} />
         </div>
       </div>
     </div>
@@ -475,7 +357,7 @@ function DatasetCard({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
 }
 
 // ── 列表项组件 ──
-function DatasetListItem({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
+function DatasetListItem({ dataset, onOpen }: { dataset: Dataset; onOpen: () => void }) {
   const catColor = getCatColor(dataset.category);
   const [liked, setLiked] = useState(false);
 
@@ -486,6 +368,7 @@ function DatasetListItem({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
       display: "flex", alignItems: "center", gap: 16,
       transition: "all 0.15s", cursor: "pointer",
     }}
+    onClick={onOpen}
     onMouseEnter={e => {
       (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)";
       (e.currentTarget as HTMLElement).style.borderColor = "#a7f3d0";
@@ -507,6 +390,7 @@ function DatasetListItem({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>{dataset.name}</span>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>{dataset.version}</span>
           {dataset.hot && (
             <span style={{
               padding: "1px 6px", borderRadius: 3,
@@ -552,6 +436,7 @@ function DatasetListItem({ dataset }: { dataset: typeof MOCK_DATASETS[0] }) {
       <div style={{ flexShrink: 0, textAlign: "right", minWidth: 60 }}>
         <span style={{ fontSize: 10, color: "#cbd5e1" }}>{dataset.size}</span>
       </div>
+      <ChevronRight size={14} style={{ color: "#cbd5e1", flexShrink: 0 }} />
     </div>
   );
 }
