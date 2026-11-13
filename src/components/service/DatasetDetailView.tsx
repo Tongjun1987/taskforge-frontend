@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, Database, FileText, Copy, Check, ExternalLink, HardDrive,
-  KeyRound, Link2, Download, ShieldCheck, FolderTree,
-  Table2, Info, RefreshCw, Clock, Gauge,
+  Link2, Download, ShieldCheck, FolderTree,
+  Table2, RefreshCw, Clock, Gauge,
 } from "lucide-react";
 import {
   type Dataset, fullName, s3Path, consolePath, objectUrl,
@@ -210,16 +210,6 @@ function PublishTab({ d }: { d: Dataset }) {
           <Field label="其他文件" value={d.attachments === "—" ? "—" : <DocLink name={d.attachments} />} />
         </div>
       </Panel>
-
-      <Panel title="登记信息" desc="由数据生产环节自动生成，发布后不可直接修改，需走元数据变更流程">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 40, rowGap: 18 }}>
-          <Field label="许可协议" value={d.license} />
-          <Field label="文件格式" value={d.format} />
-          <Field label="数据量" value={`${d.samples.toLocaleString()} 条`} />
-          <Field label="数据所有者" value={d.org} />
-          <Field label="标签" span={2} value={d.tags.join(" / ")} />
-        </div>
-      </Panel>
     </div>
   );
 }
@@ -313,8 +303,6 @@ function PreviewTab({ d }: { d: Dataset }) {
 function UsageTab({ d }: { d: Dataset }) {
   const [ttl, setTtl] = useState("24h");
   const [presign, setPresign] = useState<string | null>(null);
-  const [cred, setCred] = useState<{ ak: string; sk: string; exp: string } | null>(null);
-  const [genCred, setGenCred] = useState(false);
 
   const st = d.storage;
   const s3 = s3Path(d);
@@ -336,20 +324,12 @@ function UsageTab({ d }: { d: Dataset }) {
     toast.success(`已生成 ${ttl} 有效期的预签名链接`);
   };
 
-  const applyCred = () => {
-    setGenCred(true);
-    const ak = "LTAI5TQ8N2XK7ZP4" + randStr(4, "0123456789", `${d.id}:ak`);
-    const sk = randStr(32, "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", `${d.id}:sk`);
-    setCred({ ak, sk, exp: "7 天（2026-11-20 15:20 到期）" });
-    toast.success("临时凭证已签发，有效期 7 天");
-  };
-
   /** 本地落盘目录名取对象前缀的业务段，例如 datasets/uav-aerial-annotation/v1 → uav-aerial-annotation */
   const folder = st.prefix.split("/")[1] || d.id;
 
   const mcCmds = [
-    `# 1. 配置别名（AK/SK 由「凭证」区申请）`,
-    `mc alias set lingshu ${st.endpoint} ${cred ? cred.ak : "<ACCESS_KEY>"} ${cred ? cred.sk : "<SECRET_KEY>"}`,
+    `# 1. 配置别名（AK/SK 由数据授权模块签发）`,
+    `mc alias set lingshu ${st.endpoint} <ACCESS_KEY> <SECRET_KEY>`,
     ``,
     `# 2. 查看对象前缀下的内容`,
     `mc ls --recursive lingshu/${st.bucket}/${st.prefix}/`,
@@ -365,8 +345,8 @@ function UsageTab({ d }: { d: Dataset }) {
     `    "s3",`,
     `    endpoint_url="${st.endpoint}",`,
     `    region_name="${st.region}",`,
-    `    aws_access_key_id="${cred ? cred.ak : "<ACCESS_KEY>"}",`,
-    `    aws_secret_access_key="${cred ? cred.sk : "<SECRET_KEY>"}",`,
+    `    aws_access_key_id="<ACCESS_KEY>",`,
+    `    aws_secret_access_key="<SECRET_KEY>",`,
     `)`,
     ``,
     `# 列目录`,
@@ -394,16 +374,6 @@ function UsageTab({ d }: { d: Dataset }) {
       <Panel
         title="存储位置"
         desc={`数据托管在 ${st.provider} 对象存储，S3 协议兼容，不直接暴露物理文件路径`}
-        extra={
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11,
-            color: st.accessLevel === "公开可读" ? C.primary : "#b45309",
-            background: st.accessLevel === "公开可读" ? C.primarySoft : "#fffbeb",
-            padding: "3px 8px", borderRadius: 4,
-          }}>
-            <ShieldCheck size={11} />{st.accessLevel}
-          </span>
-        }
       >
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
@@ -514,41 +484,29 @@ function UsageTab({ d }: { d: Dataset }) {
       <Panel
         title="访问凭证与配额"
         desc="凭证由数据授权模块签发，按最小权限发放，到期自动失效"
-        extra={
-          <button onClick={applyCred} style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "5px 12px", borderRadius: 6, cursor: "pointer",
-            border: `1px solid ${C.primary}`, background: "#fff", color: C.primary,
-            fontSize: 11.5, fontWeight: 600,
-          }}>
-            <KeyRound size={12} />{cred ? "重新签发" : "申请临时凭证"}
-          </button>
-        }
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
           <div style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 10.5, color: C.faint, marginBottom: 4 }}>Access Key</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontFamily: "ui-monospace, Menlo, Consolas, monospace", fontSize: 12, color: C.text }}>
-                {cred ? cred.ak : "LTAI5TQ8****"}
+                LTAI5TQ8****
               </span>
-              {cred && <CopyBtn text={cred.ak} size={10} />}
             </div>
           </div>
           <div style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: 10.5, color: C.faint, marginBottom: 4 }}>Secret Key</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontFamily: "ui-monospace, Menlo, Consolas, monospace", fontSize: 12, color: C.text }}>
-                {cred ? cred.sk : "****************"}
+                ****************
               </span>
-              {cred && <CopyBtn text={cred.sk} size={10} />}
             </div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
           {[
-            { icon: Clock, k: "有效期", v: cred ? cred.exp : "签发后 7 天" },
+            { icon: Clock, k: "有效期", v: "签发后 7 天" },
             { icon: Gauge, k: "调用配额", v: st.quota },
             { icon: ShieldCheck, k: "权限范围", v: `仅 ${st.bucket}/${st.prefix.split("/")[0]}/ 只读` },
           ].map((x) => {
@@ -563,31 +521,6 @@ function UsageTab({ d }: { d: Dataset }) {
               </div>
             );
           })}
-        </div>
-
-        {!cred && (
-          <div style={{ marginTop: 12, padding: "9px 12px", background: "#fffbeb", borderRadius: 7, display: "flex", gap: 7, alignItems: "flex-start" }}>
-            <Info size={12} style={{ color: "#b45309", marginTop: 2, flexShrink: 0 }} />
-            <div style={{ fontSize: 11, color: "#92400e", lineHeight: 1.7 }}>
-              当前账号尚未持有该数据集的访问凭证。{d.needAuth === "是" ? "该数据集需授权使用，提交申请并经数据所有者审批后自动签发。" : "该数据集公开可读，签发临时凭证后即可按上述方式取数。"}
-            </div>
-          </div>
-        )}
-
-        {genCred && (
-          <div style={{ marginTop: 10, fontSize: 11, color: C.faint, lineHeight: 1.7, display: "flex", alignItems: "center", gap: 5 }}>
-            <Check size={11} style={{ color: C.primary }} />
-            凭证已生效，上面的 mc 命令与 boto3 脚本已自动填入 AK/SK，可直接复制执行。
-          </div>
-        )}
-      </Panel>
-
-      <Panel title="使用限制" desc="取数即视为同意以下约束">
-        <div style={{ fontSize: 11.5, color: C.sub, lineHeight: 1.9 }}>{d.usageLimit}</div>
-        <div style={{ marginTop: 10, display: "flex", gap: 16, flexWrap: "wrap", fontSize: 11, color: C.faint }}>
-          <span>· 不得对原始对象做二次分发</span>
-          <span>· 下载行为全程留痕，可追溯至账号</span>
-          <span>· 超配额会被限流，需在运营管理申请提额</span>
         </div>
       </Panel>
     </div>
@@ -644,35 +577,6 @@ export default function DatasetDetailView({ dataset }: { dataset: Dataset }) {
                 }}>{c}</span>
               ))}
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => copy(consolePath(dataset), "控制台地址已复制")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "7px 13px", borderRadius: 7, border: `1px solid ${C.border}`,
-                background: "#fff", color: C.sub, fontSize: 12, cursor: "pointer",
-              }}
-            >
-              <Link2 size={13} />复制访问地址
-            </button>
-            <button
-              onClick={() =>
-                toast.success(
-                  dataset.needAuth === "是"
-                    ? "已提交使用申请，等待数据所有者审批后自动签发凭证"
-                    : "该数据集公开可读，已为你开通访问权限",
-                )
-              }
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "7px 14px", borderRadius: 7, border: "none",
-                background: "linear-gradient(135deg, #10b981, #059669)",
-                color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              <ShieldCheck size={13} />{dataset.needAuth === "是" ? "申请使用" : "开通访问"}
-            </button>
           </div>
         </div>
 
