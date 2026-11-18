@@ -421,6 +421,8 @@ export function TopNavBar() {
     if (pathname.startsWith("/data-asset") || pathname.startsWith("/dataset") ||
         pathname.startsWith("/data-cleaning") || pathname.startsWith("/data-augmentation") ||
         pathname.startsWith("/data-synthesis") ||
+        pathname.startsWith("/data-masking") || pathname.startsWith("/data-format") ||
+        pathname.startsWith("/data-fusion") ||
         pathname.startsWith("/annotation") ||
         pathname.startsWith("/smart-annotation") || pathname.startsWith("/multi-annotator") ||
         pathname.startsWith("/quality") || pathname.startsWith("/data-ops") ||
@@ -731,6 +733,8 @@ export function Sidebar() {
     if (pathname.startsWith("/data-asset") || pathname.startsWith("/dataset") ||
         pathname.startsWith("/data-cleaning") || pathname.startsWith("/data-augmentation") ||
         pathname.startsWith("/data-synthesis") ||
+        pathname.startsWith("/data-masking") || pathname.startsWith("/data-format") ||
+        pathname.startsWith("/data-fusion") ||
         pathname.startsWith("/annotation") ||
         pathname.startsWith("/smart-annotation") || pathname.startsWith("/multi-annotator") ||
         pathname.startsWith("/quality") || pathname.startsWith("/data-ops") ||
