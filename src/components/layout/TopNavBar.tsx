@@ -10,7 +10,7 @@ import {
   Activity, Cpu, Gauge, FolderOpen, ChevronRight,
   Wrench, ClipboardList, Layers3, FlaskConical, TrendingUp,
   History, Route, Upload, Cloud, Brain, Workflow, ShieldCheck,
-  LayoutGrid, ChartBar, Share2, Library, Package
+  LayoutGrid, ChartBar, Share2, Library, Package, Combine
 } from "lucide-react";
 
 // ============================================================
@@ -66,27 +66,40 @@ const TOP_MENUS = [
     icon: Database,
     href: "/data-production",
     color: "#8b5cf6",
-    desc: "数据采集 · 数据处理 · 数据标注 · 数据质检",
+    desc: "数据接入 · 数据处理 · 数据融合 · 数据标注 · 数据质检",
     subItems: [
       // 数据接入（二级菜单，带三级子菜单）
       {
         label: "数据接入",
-        desc: "数据采集 · 数据汇聚 · 数据溯源",
+        desc: "数据采集 · 数据预处理 · 数据溯源",
         icon: Upload,
         children: [
           { label: "数据采集", href: "/data-asset/data-access", badge: null },
-          { label: "数据汇聚", href: "/data-asset/data-access/convergence", badge: null },
+          { label: "数据预处理", href: "/data-asset/data-access/convergence", badge: null },
           { label: "数据溯源", href: "/data-asset/data-access/trace", badge: null },
         ],
       },
       {
         label: "数据处理",
-        desc: "数据清洗 · 数据增强 · 数据合成",
+        desc: "数据清洗 · 数据脱敏 · 数据拆分 · 格式转换 · 数据增强",
         icon: Layers3,
         children: [
           { label: "数据清洗", href: "/data-cleaning", badge: null },
+          { label: "数据脱敏", href: "/data-masking", badge: null },
+          { label: "数据拆分", href: "/data-split", badge: null },
+          { label: "格式转换", href: "/data-format", badge: null },
           { label: "数据增强", href: "/data-augmentation", badge: null },
+        ],
+      },
+      {
+        label: "数据融合",
+        desc: "多源数据合成 · 视频序列 · 点云融合 · 时空轨迹",
+        icon: Combine,
+        children: [
           { label: "数据合成", href: "/data-synthesis", badge: null },
+          { label: "视频序列处理", href: "/data-fusion/video", badge: null },
+          { label: "点云融合处理", href: "/data-fusion/pointcloud", badge: null },
+          { label: "时空轨迹关联", href: "/data-fusion/trajectory", badge: null },
         ],
       },
       {
@@ -262,6 +275,8 @@ function SubMenuPanel({ item, onClose }: { item: any; onClose: () => void }) {
         boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)",
         minWidth: 200,
         maxWidth: 260,
+        maxHeight: "min(78vh, 760px)",
+        overflowY: "auto",
         padding: "6px 0",
         animation: "dropdownIn 0.15s ease",
       }}

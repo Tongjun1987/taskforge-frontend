@@ -494,7 +494,7 @@ export default function ConvergencePage() {
             <Layers size={22} color="#fff" />
           </div>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>数据汇聚</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", margin: 0 }}>数据预处理</h1>
             <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0 0" }}>多源数据整合 · 格式转换 · 质量过滤 · 标准化输出</p>
           </div>
         </div>
